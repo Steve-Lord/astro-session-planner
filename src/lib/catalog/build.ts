@@ -103,7 +103,8 @@ export function buildCatalog(csv: string, addendum: Addendum): Target[] {
     const t = byId.get(id);
     if (!t) throw new Error(`Addendum override for unknown target ${id}`);
     for (const [k, v] of Object.entries(patch)) {
-      if (!k.startsWith('_')) (t as unknown as Record<string, unknown>)[k] = v;
+      if (k === 'names') t.names = [...new Set([...t.names, ...(v as string[])])]; // extend, never replace
+      else if (!k.startsWith('_')) (t as unknown as Record<string, unknown>)[k] = v;
     }
   }
   for (const c of addendum.complexes) {

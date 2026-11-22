@@ -54,6 +54,25 @@ describe('buildCatalog', () => {
     expect(t.surfBr).toBe(22.8);
     expect(t).not.toHaveProperty('_note');
   });
+
+  it('extends names on override instead of replacing them', () => {
+    const out = buildCatalog(csv, { ...none, override: { NGC7000: { names: ['Cygnus Wall'] } } });
+    expect(out.find((x) => x.id === 'NGC7000')!.names).toEqual(['NGC 7000', 'North America Nebula', 'Cygnus Wall']);
+  });
+});
+
+describe('coordinate conversion', () => {
+  const byId = (id: string) => buildCatalog(csv, none).find((t) => t.id === id)!;
+  it('keeps the sign of a negative declination with zero degrees', () => {
+    expect(byId('IC9001').dec).toBeCloseTo(-0.5, 4);
+  });
+  it('converts RA near 24h', () => {
+    expect(byId('IC9001').ra).toBeCloseTo(359.75, 4);
+  });
+  it('converts a southern declination and small RA', () => {
+    expect(byId('IC9002').dec).toBeCloseTo(-(45 + 15 / 60 + 30 / 3600), 4);
+    expect(byId('IC9002').ra).toBeCloseTo(30 / 3600 * 15, 4);
+  });
 });
 
 describe('loadCatalog', () => {
