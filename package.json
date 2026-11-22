@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.test.json && tsc -p tsconfig.node.json",
     "test": "vitest run --passWithNoTests",
-    "e2e": "playwright test",
+    "e2e": "npm run build && playwright test",
     "build:catalog": "tsx scripts/build-catalog.ts"
   },
   "devDependencies": {
