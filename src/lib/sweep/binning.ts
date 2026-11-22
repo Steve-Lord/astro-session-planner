@@ -4,7 +4,7 @@
 import type { HorizonProfile } from '../types'
 import { angDiff, wrap360, type OrientationSample } from './orientation'
 
-export type Rejection = 'roll' | 'fast' | 'compass-jump' | 'not-upright' | 'low-accuracy'
+export type Rejection = 'invalid' | 'roll' | 'fast' | 'compass-jump' | 'not-upright' | 'low-accuracy'
 
 const D2R = Math.PI / 180
 const R2D = 180 / Math.PI
@@ -47,6 +47,8 @@ export class SweepAccumulator {
   }
 
   add(s: OrientationSample): { accepted: true; azTrue: number } | { accepted: false; reason: Rejection } {
+    // Non-finite angles (sensor glitches) are dropped first and never become the reference sample.
+    if (![s.alt, s.azMag, s.azRel, s.roll].every(Number.isFinite)) return { accepted: false, reason: 'invalid' }
     const prev = this.prev
     this.prev = s // speed / jump checks always compare against the previous *received* sample
     const reason = this.reject(s, prev)

@@ -227,4 +227,15 @@ describe('SweepAccumulator', () => {
     expect(() => acc.toProfile()).toThrow('Nothing was swept yet')
     expect(() => acc.toProfile({ fillLargeGaps: true })).toThrow('Nothing was swept yet')
   })
+
+  it("rejects non-finite samples as 'invalid' before any other check, without disturbing the next sample", () => {
+    const acc = new SweepAccumulator({ declinationDeg: 0 })
+    expect(acc.add(sample(10, 5, 0))).toEqual({ accepted: true, azTrue: 10 })
+    for (const over of [{ alt: NaN }, { azMag: NaN }, { azRel: Infinity }, { roll: -Infinity }, { alt: NaN, roll: 90 }]) {
+      expect(acc.add(sample(11, 5, 100, over))).toEqual({ accepted: false, reason: 'invalid' })
+    }
+    // The previous good sample is still the reference: 2° in 200 ms is fine.
+    expect(acc.add(sample(12, 5, 200)).accepted).toBe(true)
+    expect(acc.coverage().swept).toBe(2)
+  })
 })

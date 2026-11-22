@@ -1,8 +1,9 @@
 <script lang="ts">
   import { appState, ui } from '../lib/store/state.svelte'
   import { requestPersistentStorage } from '../lib/platform'
-  import type { Site } from '../lib/types'
+  import type { HorizonProfile, Site } from '../lib/types'
   import HorizonEditor from './HorizonEditor.svelte'
+  import SweepView from './SweepView.svelte'
 
   const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const baseZones = Intl.supportedValuesOf('timeZone')
@@ -12,6 +13,9 @@
   let horizonDirty = $state(false)
   let horizonRev = $state(0) // bumped so a same-site import remounts the editor
   let error = $state<string | null>(null)
+  let sweepSiteId = $state<string | null>(null)
+  /** A just-finished sweep, handed to the editor mounted for exactly this site and revision. */
+  let swept = $state.raw<{ siteId: string; rev: number; profile: HorizonProfile } | null>(null)
   let geoMsg = $state<string | null>(null)
 
   let name = $state('')
@@ -26,6 +30,7 @@
 
   const zones = $derived(baseZones.includes(timezone) ? baseZones : [timezone, ...baseZones])
   const horizonSite = $derived(appState.sites.find((s) => s.id === horizonSiteId))
+  const sweepSite = $derived(appState.sites.find((s) => s.id === sweepSiteId))
 
   /** I3: confirm before discarding unsaved horizon edits. True when it is fine to leave the editor. */
   function leaveHorizon(): boolean {
@@ -37,7 +42,39 @@
   function openHorizon(id: string): void {
     if (id === horizonSiteId || !leaveHorizon()) return
     editing = null
+    sweepSiteId = null
+    swept = null
     horizonSiteId = id
+  }
+
+  function closeHorizon(): void {
+    horizonSiteId = null
+    swept = null
+  }
+
+  function openSweep(id: string): void {
+    if (!leaveHorizon()) return
+    editing = null
+    closeHorizon()
+    sweepSiteId = id
+  }
+
+  /** The sweep finished: open its profile in the editor as unsaved edits. False keeps the sweep open. */
+  function finishSweep(profile: HorizonProfile): boolean {
+    const id = sweepSiteId
+    if (id === null || !appState.sites.some((s) => s.id === id) || !leaveHorizon()) return false
+    sweepSiteId = null
+    editing = null
+    horizonRev++
+    swept = { siteId: id, rev: horizonRev, profile }
+    horizonSiteId = id
+    return true
+  }
+
+  function sweepByHand(): void {
+    const id = sweepSiteId
+    sweepSiteId = null
+    if (id !== null) openHorizon(id)
   }
 
   // I1: Tonight's "no horizon" banner asks for a site's horizon editor.
@@ -68,6 +105,7 @@
     const site = appState.sites.find((s) => s.id === req.siteId)
     if (!site || !leaveHorizon()) return
     editing = null
+    swept = null
     site.horizon = req.profile
     horizonSiteId = site.id
     horizonRev++
@@ -77,7 +115,8 @@
     if (!leaveHorizon()) return false
     error = null
     geoMsg = null
-    horizonSiteId = null
+    closeHorizon()
+    sweepSiteId = null
     editing = site ? site.id : 'new'
     name = site?.name ?? ''
     lat = site ? String(site.lat) : ''
@@ -147,7 +186,8 @@
     if (i < 0) return
     if (!confirm(`Delete site "${appState.sites[i].name}"? Its horizon will be lost.`)) return
     appState.sites.splice(i, 1)
-    if (horizonSiteId === id) { horizonSiteId = null; horizonDirty = false }
+    if (horizonSiteId === id) { closeHorizon(); horizonDirty = false }
+    if (sweepSiteId === id) sweepSiteId = null
     if (editing === id) editing = null
     if (appState.sites.length > 0 && !appState.sites.some((s) => s.isDefault)) appState.sites[0].isDefault = true
     ensureSelection()
@@ -193,6 +233,7 @@
         <div class="actions">
           <button type="button" onclick={() => openForm(s)}>Edit</button>
           <button type="button" onclick={() => openHorizon(s.id)}>Edit horizon</button>
+          <button type="button" onclick={() => openSweep(s.id)}>Sweep horizon</button>
           <button type="button" onclick={() => remove(s.id)}>Delete</button>
         </div>
       </li>
@@ -237,9 +278,20 @@
     </form>
   {/if}
 
+  {#if sweepSite}
+    {#key sweepSite.id}
+      <SweepView site={sweepSite} onfinish={finishSweep} onmanual={sweepByHand} oncancel={() => (sweepSiteId = null)} />
+    {/key}
+  {/if}
+
   {#if horizonSite}
     {#key `${horizonSite.id}:${horizonRev}`}
-      <HorizonEditor site={horizonSite} bind:dirty={horizonDirty} onclose={() => (horizonSiteId = null)} />
+      <HorizonEditor
+        site={horizonSite}
+        initial={swept && swept.siteId === horizonSite.id && swept.rev === horizonRev ? swept.profile : undefined}
+        bind:dirty={horizonDirty}
+        onclose={closeHorizon}
+      />
     {/key}
   {/if}
 </main>
