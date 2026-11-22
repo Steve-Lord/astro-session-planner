@@ -32,6 +32,17 @@ export function defaultState(): AppState {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+function mergeSettings(raw: Record<string, unknown>): Settings {
+  const out: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
+    const v = raw[key];
+    if (key === 'darkSunAlt') {
+      if (v === -18 || v === -12) out[key] = v;
+    } else if (typeof v === 'number' && Number.isFinite(v)) out[key] = v;
+  }
+  return out as unknown as Settings;
+}
+
 /** Validate untrusted data and normalise it into an AppState; throws Error naming the first problem. */
 function parseState(raw: unknown): AppState {
   if (!isObj(raw)) throw new Error('Backup data must be an object');
@@ -66,10 +77,13 @@ function parseState(raw: unknown): AppState {
   if (!gear.some((g) => g.id === SEESTAR_S50_PRO.id)) gear.unshift(structuredClone(SEESTAR_S50_PRO));
 
   const selGear = gear.find((g) => g.id === raw.selectedGearId) ?? gear.find((g) => g.id === SEESTAR_S50_PRO.id)!;
+  const filterIds = selGear.filters.map((f) => f.id);
   const selFilter =
-    selGear.filters.some((f) => f.id === raw.selectedFilterId) && typeof raw.selectedFilterId === 'string'
+    typeof raw.selectedFilterId === 'string' && filterIds.includes(raw.selectedFilterId)
       ? raw.selectedFilterId
-      : DEFAULT_FILTER_ID;
+      : filterIds.includes(DEFAULT_FILTER_ID)
+        ? DEFAULT_FILTER_ID
+        : (filterIds[0] ?? DEFAULT_FILTER_ID);
   const selectedSiteId =
     typeof raw.selectedSiteId === 'string' && (sites as Site[]).some((s) => s.id === raw.selectedSiteId)
       ? raw.selectedSiteId
@@ -79,7 +93,7 @@ function parseState(raw: unknown): AppState {
     version: 1,
     sites: sites as Site[],
     gear,
-    settings: { ...DEFAULT_SETTINGS, ...(raw.settings as Partial<Settings>) },
+    settings: mergeSettings(raw.settings),
     selectedSiteId,
     selectedGearId: selGear.id,
     selectedFilterId: selFilter,

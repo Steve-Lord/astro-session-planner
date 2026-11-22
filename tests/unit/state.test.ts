@@ -96,3 +96,38 @@ describe('importState', () => {
     expect(importState(exportState(s))).toEqual(s);
   });
 });
+
+describe('hardening', () => {
+  it.each(['null', '42', '[]'])('rejects non-object %s', (j) => {
+    expect(() => importState(j)).toThrow(/object/);
+    const st = new MemStorage();
+    st.setItem('asp:v1', j);
+    const r = loadState(st);
+    expect(r.error).not.toBeNull();
+    expect(r.state).toEqual(defaultState());
+  });
+  it('rejects non-object settings', () => {
+    expect(() => importState(JSON.stringify({ ...defaultState(), settings: 5 }))).toThrow('settings must be an object');
+  });
+  it('unresolved selectedSiteId becomes null', () => {
+    const j = JSON.stringify({ ...defaultState(), sites: [site], selectedSiteId: 'ghost' });
+    expect(importState(j).selectedSiteId).toBeNull();
+  });
+  it('wrong-typed settings fall back; unknown keys dropped; darkSunAlt validated', () => {
+    const j = JSON.stringify({ ...defaultState(), settings: { faintLimitMag: 'x', darkSunAlt: -15, bogus: 1, clearanceDeg: 4 } });
+    const s = importState(j).settings;
+    expect(s).toEqual({ ...DEFAULT_SETTINGS, clearanceDeg: 4 });
+    expect('bogus' in s).toBe(false);
+  });
+  it('filter falls back to first filter when gear lacks dual-band', () => {
+    const g = { ...SEESTAR_S50_PRO, id: 'g2', filters: [{ id: 'f1', name: 'F', kind: 'none' as const }] };
+    const j = JSON.stringify({ ...defaultState(), gear: [SEESTAR_S50_PRO, g], selectedGearId: 'g2', selectedFilterId: 'zz' });
+    expect(importState(j).selectedFilterId).toBe('f1');
+  });
+  it('corrupt load leaves asp:v1 untouched', () => {
+    const st = new MemStorage();
+    st.setItem('asp:v1', 'garbage');
+    loadState(st);
+    expect(st.getItem('asp:v1')).toBe('garbage');
+  });
+});
