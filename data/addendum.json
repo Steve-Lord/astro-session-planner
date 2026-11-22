@@ -180,8 +180,8 @@
     "NGC1976": {
       "majArcmin": 85,
       "minArcmin": 60,
-      "surfBr": 21.9,
-      "_note": "Cl+N, so no automatic estimate. Published 85x60 arcmin, V 4.0 (nebula-dominated): 4.0 + 2.5 log10(pi/4*85*60*3600) = 21.9"
+      "surfBr": 20.5,
+      "_note": "Cl+N, so no automatic estimate. Core-weighted: a Seestar records the bright inner Huygens region, not the 85x60 arcmin faint extent (which averages 21.9 and would hide M42 as too faint at full Moon). V 4.0 over the inner ~40x35 arcmin: 4.0 + 2.5 log10(pi/4*40*35*3600) = 20.5. Frame size stays the published 85x60."
     },
     "NGC1499": {
       "emission": "emission",

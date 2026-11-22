@@ -74,6 +74,10 @@ describe('regression: London, 2026-11-24 (near full Moon), no filter', () => {
     expect(hiddenIds(plan, 'too-faint')).toContain('NGC5457')
     expect(hiddenIds(plan, 'too-faint')).toContain('NGC2403')
   })
+  it('N1: M42 (core-weighted surface brightness) survives the full Moon with no filter', () => {
+    expect(hiddenIds(plan, 'too-faint')).not.toContain('NGC1976')
+    expect(entryIds(plan)).toContain('NGC1976')
+  })
   it('broadband-faint emission (Heart, Pacman) is too faint with no filter at full Moon', () => {
     expect(hiddenIds(plan, 'too-faint')).toContain('IC1805')
     expect(hiddenIds(plan, 'too-faint')).toContain('NGC0281')

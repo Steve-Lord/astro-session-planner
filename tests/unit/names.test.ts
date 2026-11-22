@@ -7,6 +7,10 @@ describe('commonName (M1)', () => {
     expect(commonName(['NGC 1952', 'M1', 'Crab Nebula'])).toBe('Crab Nebula')
     expect(commonName(['Sh2-155', 'IC 1', '2MASX J0', 'Cave Nebula'])).toBe('Cave Nebula')
   })
+  it('skips Caldwell designations (Rosette)', () => {
+    expect(commonName(['NGC 2237', 'Caldwell 49', 'Rosette Nebula'])).toBe('Rosette Nebula')
+    expect(commonName(['NGC 2244', 'C 50', 'Satellite Cluster'])).toBe('Satellite Cluster')
+  })
   it('keeps names that merely start with M', () => {
     expect(commonName(['NGC 2174', 'Monkey Head Nebula'])).toBe('Monkey Head Nebula')
     expect(commonName(['IC 443', 'Medusa'])).toBe('Medusa')
