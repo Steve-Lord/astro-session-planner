@@ -19,7 +19,7 @@ export interface Fit { label: FitLabel; fill: number | null; panels: [number, nu
 export type HiddenReason = 'blocked' | 'too-small' | 'too-faint';
 export interface ScoreBreakdown { hours: number; altitude: number; fit: number; contrast: number; moon: number; }
 export interface PlanEntry { target: Target; windows: TimeWindow[]; totalHours: number; best: TimeWindow; peakAlt: number;
-  fit: Fit; contrastMag: number; minMoonSepDeg: number | null; score: number; breakdown: ScoreBreakdown; }
+  fit: Fit; contrastMag: number | null; minMoonSepDeg: number | null; score: number; breakdown: ScoreBreakdown; }
 export interface NightPlan { siteId: string; date: string; darkWindow: TimeWindow | null; darkSunAltUsed: -18 | -12;
   noAstroDark: boolean; moon: { illumination: number; rise: number | null; set: number | null };
   entries: PlanEntry[]; hidden: Record<HiddenReason, Target[]>; }
