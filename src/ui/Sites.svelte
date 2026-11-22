@@ -47,6 +47,13 @@
     if (appState.sites.some((s) => s.id === id)) openHorizon(id)
   })
 
+  // A horizon link asked for a new site: open the form; the decoded horizon is applied on Save.
+  $effect(() => {
+    if (!ui.openNewSite) return
+    ui.openNewSite = false
+    openForm(null)
+  })
+
   function openForm(site: Site | null): void {
     if (!leaveHorizon()) return
     error = null
@@ -102,6 +109,10 @@
     } else {
       const site = appState.sites.find((s) => s.id === editing)
       if (site) Object.assign(site, fields, { isDefault })
+    }
+    if (editing === 'new' && ui.pendingImport) {
+      appState.sites[appState.sites.length - 1].horizon = ui.pendingImport
+      ui.pendingImport = null
     }
     const saved = editing === 'new' ? appState.sites[appState.sites.length - 1] : appState.sites.find((s) => s.id === editing)
     if (saved?.isDefault) for (const s of appState.sites) if (s !== saved) s.isDefault = false
@@ -200,7 +211,7 @@
       <label class="check"><input type="checkbox" bind:checked={treesBare} /> Trees bare (leaf-off horizon)</label>
       <div class="actions">
         <button type="submit">Save site</button>
-        <button type="button" onclick={() => { editing = null; error = null }}>Cancel</button>
+        <button type="button" onclick={() => { editing = null; error = null; ui.pendingImport = null }}>Cancel</button>
       </div>
     </form>
   {/if}

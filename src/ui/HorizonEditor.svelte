@@ -1,6 +1,7 @@
 <script lang="ts">
   import { flatProfile, setRange } from '../lib/horizon/profile'
   import { appState } from '../lib/store/state.svelte'
+  import ShareHorizon from './ShareHorizon.svelte'
   import type { HorizonProfile, Site } from '../lib/types'
 
   // `dirty` is bindable so the parent can confirm before switching to another site's editor (I3).
@@ -26,6 +27,7 @@
   // svelte-ignore state_referenced_locally
   let profile = $state.raw<HorizonProfile>(site.horizon ? structuredClone($state.snapshot(site.horizon)) : flatProfile())
   let saved = $state(false)
+  let sharing = $state(false)
 
   // Warn on reload/close while edits are unsaved.
   $effect(() => {
@@ -214,10 +216,13 @@
   <div class="actions">
     <button type="button" onclick={save}>Save horizon</button>
     <button type="button" onclick={resetFlat}>Reset flat</button>
+    <button type="button" onclick={() => (sharing = !sharing)} disabled={dirty || !site.horizon}>Send to another device</button>
     <button type="button" onclick={close}>Close</button>
     {#if saved}<span class="hint" role="status">Saved.</span>{/if}
     {#if dirty}<span class="hint">Unsaved changes</span>{/if}
+    {#if dirty || !site.horizon}<span class="hint">Save first</span>{/if}
   </div>
+  {#if sharing && !dirty && site.horizon}<ShareHorizon horizon={site.horizon} />{/if}
   {#if saved && backupHint}
     <div class="banner info backup" role="status">
       <span>Horizon saved in this browser only. <a href="#settings">Back up your settings</a> to keep a copy.</span>
