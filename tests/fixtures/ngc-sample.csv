@@ -1,0 +1,10 @@
+Name;Type;RA;Dec;Const;MajAx;MinAx;PosAng;B-Mag;V-Mag;J-Mag;H-Mag;K-Mag;SurfBr;Hubble;Pax;Pm-RA;Pm-Dec;RadVel;Redshift;Cstar U-Mag;Cstar B-Mag;Cstar V-Mag;M;NGC;IC;Cstar Names;Identifiers;Common names;NED notes;OpenNGC notes;Sources
+IC0001;**;00:08:27.05;+27:43:03.6;Peg;;;;;;;;;;;;;;;;;;;;;;;;;;;Type:1|RA:1|Dec:1|Const:99
+NGC0224;G;00:42:44.35;+41:16:08.6;And;177.83;69.66;35;4.29;3.44;2.09;1.28;0.98;23.63;Sb;;;;-300;-0.001000;;;;031;;;;2MASX J00424433+4116074,IRAS 00400+4059,MCG +07-02-016,PGC 002557,UGC 00454;Andromeda Galaxy;;;Type:1|RA:1|Dec:1|Const:99|MajAx:3|MinAx:3|PosAng:3|B-Mag:3|V-Mag:2|J-Mag:2|H-Mag:2|K-Mag:2|SurfBr:3|Hubble:3|Pax:2|RadVel:2|Redshift:2
+NGC6960;SNR;20:45:58.18;+30:35:42.5;Cyg;210.00;160.00;;7.00;;;;;;;;;;;;;;;;;;;C 034,LBN 191;Veil Nebula,Filamentary Nebula,Western Veil;;;Type:1|RA:1|Dec:1|Const:99|MajAx:9|MinAx:9|B-Mag:3
+NGC6992;SNR;20:56:19.07;+31:44:33.9;Cyg;60.00;8.00;;7.00;;;;;;;;;;;;;;;;;;;C 033;Eastern Veil,Network Nebula;;;Type:1|RA:1|Dec:1|Const:99|MajAx:3|MinAx:3|B-Mag:3
+NGC7000;HII;20:59:17.14;+44:31:43.6;Cyg;120.00;30.00;;4.00;;;;;;;;;;;;;;;;;;;C 020,LBN 373;North America Nebula;;;Type:1|RA:1|Dec:1|Const:99|MajAx:9|MinAx:9|B-Mag:3
+IC0011;Dup;00:52:59.35;+56:37:18.8;Cas;;;;;;;;;;;;;;;;;;;;0281;;;;;;;Type:1|RA:1|Dec:1|Const:99
+IC0071;*;01:01:19.26;-06:46:01.8;Cet;;;;;;;;;;;;;;;;;;;;;;;;;ID as IC 0071 is not certain, but there is no other reasonable candidate.;Simbad points to MCG-01-03-063.;Type:1|RA:1|Dec:1|Const:99
+IC9001;HII;23:59:00.0;-00:30:00;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+IC9002;HII;00:00:30.0;-45:15:30.0;;;;;;;;;;;;;;;;;;;;;;;;;;;;

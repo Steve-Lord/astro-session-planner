@@ -1,0 +1,4 @@
+catalog.json is derived from OpenNGC (https://github.com/mattiaverga/OpenNGC) by Mattia Verga and
+contributors, licensed CC-BY-SA-4.0 (https://creativecommons.org/licenses/by-sa/4.0/), plus a small
+hand-curated addendum (Sharpless objects, Veil complex, surface-brightness overrides). Full licence
+text and source commit: data/openngc/LICENSE, data/openngc/SOURCE.md.

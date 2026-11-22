@@ -1,0 +1,273 @@
+{
+  "add": [
+    {
+      "id": "Sh2-101",
+      "names": [
+        "Sh2-101",
+        "Tulip Nebula"
+      ],
+      "ra": 300.4375,
+      "dec": 35.2667,
+      "type": "HII",
+      "majArcmin": 20,
+      "minArcmin": 15,
+      "posAngle": null,
+      "mag": null,
+      "surfBr": null,
+      "emission": "emission"
+    },
+    {
+      "id": "Sh2-129",
+      "names": [
+        "Sh2-129",
+        "Flying Bat Nebula"
+      ],
+      "ra": 317.75,
+      "dec": 59.95,
+      "type": "HII",
+      "majArcmin": 180,
+      "minArcmin": 120,
+      "posAngle": null,
+      "mag": null,
+      "surfBr": null,
+      "emission": "emission"
+    },
+    {
+      "id": "Sh2-155",
+      "names": [
+        "Sh2-155",
+        "Cave Nebula"
+      ],
+      "ra": 344.2,
+      "dec": 62.6167,
+      "type": "HII",
+      "majArcmin": 50,
+      "minArcmin": 30,
+      "posAngle": null,
+      "mag": 7.7,
+      "surfBr": 24.3,
+      "emission": "emission"
+    },
+    {
+      "id": "Sh2-240",
+      "names": [
+        "Sh2-240",
+        "Simeis 147",
+        "Spaghetti Nebula"
+      ],
+      "ra": 85.0,
+      "dec": 28.0,
+      "type": "SNR",
+      "majArcmin": 180,
+      "minArcmin": 180,
+      "posAngle": null,
+      "mag": null,
+      "surfBr": null,
+      "emission": "emission"
+    },
+    {
+      "id": "Sh2-308",
+      "names": [
+        "Sh2-308",
+        "Dolphin Head Nebula"
+      ],
+      "ra": 103.5542,
+      "dec": -23.9,
+      "type": "HII",
+      "majArcmin": 40,
+      "minArcmin": 40,
+      "posAngle": null,
+      "mag": null,
+      "surfBr": null,
+      "emission": "emission"
+    }
+  ],
+  "override": {
+    "NGC2359": {
+      "names": [
+        "Thor's Helmet"
+      ],
+      "_note": "Common name only; OpenNGC has none"
+    },
+    "NGC7000": {
+      "majArcmin": 120,
+      "minArcmin": 100,
+      "mag": 4.0,
+      "surfBr": 22.8,
+      "_note": "Published size 120x100 arcmin, integrated mag 4.0; surfBr = 4.0 + 2.5 log10(pi/4*120*100*3600) = 22.83"
+    },
+    "IC1805": {
+      "names": [
+        "Heart Nebula"
+      ],
+      "majArcmin": 60,
+      "minArcmin": 60,
+      "mag": 6.5,
+      "surfBr": 24.0,
+      "_note": "Heart Nebula ~60 arcmin, V 6.5 (OpenNGC); same estimate formula = 24.02"
+    },
+    "IC1848": {
+      "names": [
+        "Soul Nebula"
+      ],
+      "majArcmin": 150,
+      "minArcmin": 75,
+      "mag": 6.5,
+      "surfBr": 25.3,
+      "_note": "Soul Nebula ~150x75 arcmin, V 6.5 (OpenNGC); same formula = 25.26"
+    },
+    "NGC0281": {
+      "names": [
+        "Pacman Nebula"
+      ],
+      "majArcmin": 35,
+      "minArcmin": 30,
+      "mag": 7.4,
+      "surfBr": 23.6,
+      "_note": "Pacman Nebula ~35x30 arcmin, mag 7.4 (published); same formula = 23.58"
+    },
+    "IC1396": {
+      "majArcmin": 170,
+      "minArcmin": 140,
+      "mag": 3.5,
+      "surfBr": 23.1,
+      "_note": "Elephant Trunk complex ~170x140 arcmin, mag 3.5 (published); same formula = 23.07"
+    },
+    "IC5070": {
+      "majArcmin": 60,
+      "minArcmin": 50,
+      "mag": 8.0,
+      "surfBr": 25.3,
+      "_note": "Pelican ~60x50 arcmin, mag 8.0 (OpenNGC); same formula = 25.32"
+    },
+    "IC0434": {
+      "names": [
+        "Horsehead Nebula region"
+      ],
+      "majArcmin": 60,
+      "minArcmin": 10,
+      "mag": 7.3,
+      "surfBr": 22.9,
+      "_note": "OpenNGC B 11 over 90x30 gave 28.2 (the magnitude is not the nebula's light). Bright H-alpha strip behind the Horsehead ~60x10 arcmin, integrated mag ~7.3 (commonly quoted); 7.3 + 2.5 log10(pi/4*60*10*3600) = 22.9"
+    },
+    "NGC7023": {
+      "type": "RfN",
+      "emission": "broadband",
+      "surfBr": 22.6,
+      "_note": "Reflection nebula (OpenNGC 'Neb'; V 7.2 is the illuminating star HD 200775). Reflected light taken as ~2 mag (about 15%) below the star, 9.2, over the 10x8 arcmin bright part: 9.2 + 2.5 log10(pi/4*10*8*3600) = 22.6. Typed RfN/broadband: dual-band does not help it"
+    },
+    "IC0444": {
+      "surfBr": 24.0,
+      "_note": "Faint reflection nebula (LBN 840); OpenNGC B 7.03 is the illuminating star and gave 19.4. No published integrated magnitude: set to 24.0, the level of other faint nebulae (Heart 24.0, Cocoon 24.0), so it is listed but never tops the shortlist"
+    },
+    "IC5146": {
+      "emission": "mixed",
+      "majArcmin": 12,
+      "minArcmin": 12,
+      "surfBr": 24.0,
+      "_note": "OpenNGC V 7.2 is the embedded cluster/star (gave 20.8). Cocoon nebula ~12x12 arcmin, nebular light ~10 mag (faint; needs dark skies): 10 + 2.5 log10(pi/4*12*12*3600) = 24.0. Emission plus reflection, so 'mixed'"
+    },
+    "NGC2264": {
+      "names": [
+        "Cone Nebula",
+        "Fox Fur Nebula"
+      ],
+      "majArcmin": 40,
+      "minArcmin": 30,
+      "surfBr": 23.8,
+      "_note": "OpenNGC V 3.9 is the Christmas Tree cluster. Surrounding emission (Cone/Fox Fur) ~40x30 arcmin, nebular light ~7.5: 7.5 + 2.5 log10(pi/4*40*30*3600) = 23.8"
+    },
+    "NGC1976": {
+      "majArcmin": 85,
+      "minArcmin": 60,
+      "surfBr": 20.5,
+      "_note": "Cl+N, so no automatic estimate. Core-weighted: a Seestar records the bright inner Huygens region, not the 85x60 arcmin faint extent (which averages 21.9 and would hide M42 as too faint at full Moon). V 4.0 over the inner ~40x35 arcmin: 4.0 + 2.5 log10(pi/4*40*35*3600) = 20.5. Frame size stays the published 85x60."
+    },
+    "NGC1499": {
+      "emission": "emission",
+      "mag": 6.0,
+      "surfBr": 24.1,
+      "_note": "California Nebula is H-alpha emission (OpenNGC 'Neb'). Published 160x40 arcmin, mag ~6.0: 6.0 + 2.5 log10(pi/4*160*40*3600) = 24.1"
+    }
+  },
+  "complexes": [
+    {
+      "target": {
+        "id": "VeilComplex",
+        "names": [
+          "Veil Complex",
+          "Cygnus Loop",
+          "Veil Nebula"
+        ],
+        "ra": 312.75,
+        "dec": 30.7,
+        "type": "SNR",
+        "majArcmin": 180,
+        "minArcmin": 180,
+        "posAngle": null,
+        "mag": 3.0,
+        "surfBr": 22.9,
+        "emission": "emission"
+      },
+      "hides": [
+        "NGC6960",
+        "NGC6992",
+        "NGC6995",
+        "NGC6979",
+        "IC1340"
+      ]
+    },
+    {
+      "target": {
+        "id": "RosetteComplex",
+        "names": [
+          "Rosette Nebula",
+          "NGC 2237",
+          "NGC 2238",
+          "NGC 2239",
+          "NGC 2244",
+          "NGC 2246",
+          "Caldwell 49"
+        ],
+        "ra": 98.0,
+        "dec": 4.95,
+        "type": "HII",
+        "majArcmin": 80,
+        "minArcmin": 60,
+        "posAngle": null,
+        "mag": 5.5,
+        "surfBr": 23.3,
+        "emission": "emission",
+        "_note": "Rosette ~80x60 arcmin centred on NGC 2244; integrated mag 5.5 (published figures range 4.8-9; builder's choice): 5.5 + 2.5 log10(pi/4*80*60*3600) = 23.3"
+      },
+      "hides": [
+        "NGC2237",
+        "NGC2238",
+        "NGC2239",
+        "NGC2244",
+        "NGC2246"
+      ]
+    },
+    {
+      "target": {
+        "id": "Sh2-171",
+        "names": [
+          "Sh2-171",
+          "NGC 7822"
+        ],
+        "ra": 0.9,
+        "dec": 68.6167,
+        "type": "HII",
+        "majArcmin": 120,
+        "minArcmin": 60,
+        "posAngle": null,
+        "mag": null,
+        "surfBr": null,
+        "emission": "emission"
+      },
+      "hides": [
+        "NGC7822"
+      ]
+    }
+  ]
+}
