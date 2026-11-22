@@ -72,11 +72,31 @@ describe('horizon share encoding', () => {
     const bytes = new Uint8Array(364); bytes[0] = 2
     await expect(decodeHorizon(await deflateB64(bytes))).rejects.toThrow('This link was made by a newer version of the app.')
   })
-  it('keeps location out of the link', async () => {
-    const url = importUrl('https://example.test/app/', await encodeHorizon(profile()))
-    expect(url).not.toContain('51.48')
-    expect(url).not.toContain('0.0077')
-    expect(url.startsWith('https://example.test/app/#import-horizon=')).toBe(true)
+  it('produces a fragment-only URL-safe link', async () => {
+    const payload = await encodeHorizon(profile())
+    const url = importUrl('https://example.test/app/', payload)
+    expect(url).toMatch(/^https:\/\/example\.test\/app\/#import-horizon=[A-Za-z0-9_-]+$/)
+    expect(payload.endsWith('=')).toBe(false)
+  })
+  it('validates length for both layouts', async () => {
+    const mk = (len: number, flags: number) => { const b = new Uint8Array(len); b[0] = 1; b[1] = flags; return deflateB64(b) }
+    const plain = 2 + 360 + 2, seas = plain + 45 + 360
+    await expect(decodeHorizon(await mk(plain, 1))).rejects.toThrow('This link is incomplete.')
+    await expect(decodeHorizon(await mk(seas, 0))).rejects.toThrow('This link is incomplete.')
+    await expect(decodeHorizon(await mk(plain + 1, 0))).rejects.toThrow('This link is incomplete.')
+    await expect(decodeHorizon(await mk(seas + 1, 1))).rejects.toThrow('This link is incomplete.')
+    await expect(decodeHorizon(await mk(plain, 0))).resolves.toBeTruthy()
+    await expect(decodeHorizon(await mk(seas, 1))).resolves.toBeTruthy()
+  })
+  it('caps untrusted input size', async () => {
+    await expect(decodeHorizon('A'.repeat(2001))).rejects.toThrow('This link is damaged or incomplete.')
+    const bomb = new Uint8Array(100_000); bomb[0] = 1
+    const s = await deflateB64(bomb)
+    expect(s.length).toBeLessThan(2000)
+    await expect(decodeHorizon(s)).rejects.toThrow('This link is incomplete.')
+  })
+  it('rejects version 0', async () => {
+    await expect(decodeHorizon(await deflateB64(new Uint8Array(364)))).rejects.toThrow('This link is damaged or incomplete.')
   })
   it('reads the import hash', () => {
     expect(readImportHash('#import-horizon=abc_-1')).toBe('abc_-1')
@@ -86,6 +106,9 @@ describe('horizon share encoding', () => {
     expect(readImportHash('#import-horizon=')).toBeNull()
   })
   it('makes a QR svg', () => {
-    expect(horizonQrSvg('https://example.test/#import-horizon=abc')).toContain('<svg')
+    const svg = horizonQrSvg('https://example.test/#import-horizon=abc')
+    expect(svg).toContain('<svg')
+    expect(svg).not.toContain('<script')
+    expect(svg).not.toContain('<title')
   })
 })

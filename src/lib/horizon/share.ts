@@ -11,6 +11,8 @@ const HASH_KEY = 'import-horizon='
 
 const DAMAGED = 'This link is damaged or incomplete.'
 const INCOMPLETE = 'This link is incomplete.'
+const MAX_LINK_CHARS = 2000
+const MAX_RAW_BYTES = 1024   // largest valid payload is 769 bytes
 const NEWER = 'This link was made by a newer version of the app.'
 
 async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
@@ -54,15 +56,39 @@ export async function encodeHorizon(p: HorizonProfile): Promise<string> {
   return toBase64Url(await pipe(raw, new CompressionStream('deflate-raw')))
 }
 
+/** Inflate untrusted bytes, aborting as soon as the output exceeds `max` (returns null then). */
+async function inflateCapped(bytes: Uint8Array, max: number): Promise<Uint8Array | null> {
+  const stream = new Blob([bytes as BlobPart]).stream()
+    .pipeThrough(new DecompressionStream('deflate-raw') as unknown as ReadableWritablePair<Uint8Array, BufferSource>)
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.length
+    if (total > max) { await reader.cancel(); return null }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(total)
+  let o = 0
+  for (const c of chunks) { out.set(c, o); o += c.length }
+  return out
+}
+
 export async function decodeHorizon(s: string): Promise<HorizonProfile> {
-  let raw: Uint8Array
+  if (s.length > MAX_LINK_CHARS) throw new Error(DAMAGED)
+  let inflated: Uint8Array | null
   try {
-    raw = await pipe(fromBase64Url(s), new DecompressionStream('deflate-raw'))
+    inflated = await inflateCapped(fromBase64Url(s), MAX_RAW_BYTES)
   } catch {
     throw new Error(DAMAGED)
   }
+  if (inflated === null) throw new Error(INCOMPLETE)
+  const raw = inflated
   if (raw.length < 2) throw new Error(INCOMPLETE)
   if (raw[0] > VERSION) throw new Error(NEWER)
+  if (raw[0] !== VERSION) throw new Error(DAMAGED)
   const flags = raw[1]
   const seasonal = (flags & FLAG_SEASONAL) !== 0
   if (raw.length !== 2 + N + (seasonal ? BITSET + N : 0) + 2) throw new Error(INCOMPLETE)
@@ -97,6 +123,7 @@ export function readImportHash(hash: string): string | null {
 }
 
 export function horizonQrSvg(url: string): string {
+  // Never pass alt/title text to createSvgTag: the URL must not be repeated inside the SVG.
   const qr = qrcode(0, 'L')
   qr.addData(url)
   qr.make()
