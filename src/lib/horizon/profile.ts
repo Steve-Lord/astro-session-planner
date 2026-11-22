@@ -41,8 +41,14 @@ export function frameClears(
 ): boolean {
   const span = halfDiagDeg / Math.max(Math.cos((alt * Math.PI) / 180), 0.1);
   const bottom = alt - halfDiagDeg;
+  const blocked = (a: number) => {
+    const h = heightAt(p, a, treesBare);
+    return !Number.isFinite(h) || bottom < h + clearanceDeg;
+  };
+  // Exact span endpoints and centre, plus every integer azimuth in between.
+  if (blocked(az - span) || blocked(az) || blocked(az + span)) return false;
   for (let a = Math.ceil(az - span); a <= Math.floor(az + span); a++) {
-    if (bottom < heightAt(p, a, treesBare) + clearanceDeg) return false;
+    if (blocked(a)) return false;
   }
   return true;
 }

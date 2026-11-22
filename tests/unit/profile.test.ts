@@ -33,6 +33,29 @@ describe('heightAt', () => {
     expect(heightAt(p, 90, false)).toBe(35);
     expect(heightAt(p, 90, true)).toBe(10);
   });
+  it('handles negative azimuth', () => {
+    const p = flatProfile();
+    p.altitudes[359] = 40;
+    p.altitudes[0] = 20;
+    expect(heightAt(p, -0.5, false)).toBeCloseTo(30);
+    expect(heightAt(p, -1, false)).toBe(40);
+  });
+  it('handles azimuth >= 360', () => {
+    const p = flatProfile();
+    p.altitudes[5] = 10;
+    p.altitudes[6] = 20;
+    expect(heightAt(p, 365.5, false)).toBeCloseTo(15);
+    expect(heightAt(p, 360, false)).toBe(0);
+  });
+  it('interpolates between seasonal and non-seasonal neighbours when bare', () => {
+    const p = flatProfile();
+    p.altitudes[20] = 30;
+    p.seasonal[20] = true;
+    p.leafOffAltitudes[20] = 10;
+    p.altitudes[21] = 20;
+    expect(heightAt(p, 20.5, true)).toBeCloseTo(15);
+    expect(heightAt(p, 20.5, false)).toBeCloseTo(25);
+  });
   it('returns 0 for a null profile', () => {
     expect(heightAt(null, 123, true)).toBe(0);
   });
@@ -65,6 +88,30 @@ describe('frameClears', () => {
   });
   it('clears across the wrap when high enough', () => {
     expect(frameClears(wall, false, 34, 359, 1.4, 2)).toBe(true);
+  });
+  it('detects the wall only via the wrap across 0 (az 359)', () => {
+    expect(frameClears(wall, false, 33, 359, 1.4, 2)).toBe(false);
+  });
+  it('detects the wall via negative sample azimuths (az 1)', () => {
+    expect(frameClears(wall, false, 33, 1, 1.4, 2)).toBe(false);
+  });
+  it('evaluates the exact span endpoint between integer azimuths', () => {
+    const p = flatProfile();
+    p.altitudes[11] = 30; // heightAt(10.905) = 27.15
+    // span = 0.85/cos(20deg) ~ 0.905, so the only integer sampled is 10 (height 0)
+    expect(frameClears(p, false, 20, 10, 0.85, 2)).toBe(false);
+  });
+  it('evaluates the target azimuth itself when no integer azimuth is in span', () => {
+    const p = flatProfile();
+    p.altitudes[100] = 30;
+    p.altitudes[101] = 30;
+    expect(frameClears(p, false, 20, 100.5, 0.2, 2)).toBe(false);
+    expect(frameClears(p, false, 40, 100.5, 0.2, 2)).toBe(true);
+  });
+  it('treats a non-finite height as blocked', () => {
+    const p = flatProfile();
+    p.altitudes[50] = NaN;
+    expect(frameClears(p, false, 60, 50, 1, 2)).toBe(false);
   });
   it('treats a null profile as height 0', () => {
     expect(frameClears(null, false, 5, 100, 1.4, 2)).toBe(true);
