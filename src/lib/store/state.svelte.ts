@@ -27,7 +27,9 @@ export const ui: {
   pendingImport: HorizonProfile | null;
   /** Asks Sites to open its new-site form. */
   openNewSite: boolean;
-} = $state({ editHorizonFor: null, importPayload: null, pendingImport: null, openNewSite: false });
+  /** Asks Sites to apply an imported horizon to a site (after checking for unsaved editor changes). */
+  applyImport: { siteId: string; profile: HorizonProfile } | null;
+} = $state({ editHorizonFor: null, importPayload: null, pendingImport: null, openNewSite: false, applyImport: null });
 
 export function persist(): void {
   if (storage) saveState(storage, $state.snapshot(appState) as AppState);

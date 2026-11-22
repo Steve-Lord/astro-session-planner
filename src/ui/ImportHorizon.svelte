@@ -43,8 +43,8 @@
     const site = appState.sites.find((s) => s.id === target)
     if (!site) return
     if (site.horizon && !confirm(`Replace the existing horizon for ${site.name}?`)) return
-    site.horizon = $state.snapshot(profile) as HorizonProfile
-    ui.editHorizonFor = site.id
+    // Sites applies it (after checking for unsaved horizon edits); this dialog never mutates sites.
+    ui.applyImport = { siteId: site.id, profile: $state.snapshot(profile) as HorizonProfile }
     ui.importPayload = null
   }
 </script>

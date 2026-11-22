@@ -10,6 +10,7 @@
   let editing = $state<string | null>(null) // site id, 'new', or null
   let horizonSiteId = $state<string | null>(null)
   let horizonDirty = $state(false)
+  let horizonRev = $state(0) // bumped so a same-site import remounts the editor
   let error = $state<string | null>(null)
   let geoMsg = $state<string | null>(null)
 
@@ -51,11 +52,29 @@
   $effect(() => {
     if (!ui.openNewSite) return
     ui.openNewSite = false
-    openForm(null)
+    if (!openForm(null)) ui.pendingImport = null
   })
 
-  function openForm(site: Site | null): void {
-    if (!leaveHorizon()) return
+  // The pending import belongs to the new-site form session: drop it whenever that form is left.
+  $effect(() => {
+    if (editing !== 'new') ui.pendingImport = null
+  })
+
+  // An import into an existing site: only applied once any unsaved horizon edits are settled.
+  $effect(() => {
+    const req = ui.applyImport
+    if (!req) return
+    ui.applyImport = null
+    const site = appState.sites.find((s) => s.id === req.siteId)
+    if (!site || !leaveHorizon()) return
+    editing = null
+    site.horizon = req.profile
+    horizonSiteId = site.id
+    horizonRev++
+  })
+
+  function openForm(site: Site | null): boolean {
+    if (!leaveHorizon()) return false
     error = null
     geoMsg = null
     horizonSiteId = null
@@ -69,6 +88,7 @@
     sqm = site?.sky.sqm !== undefined ? String(site.sky.sqm) : ''
     isDefault = site ? site.isDefault : appState.sites.length === 0
     treesBare = site?.treesBare ?? false
+    return true
   }
 
   function ensureSelection(): void {
@@ -184,6 +204,7 @@
   {:else}
     <form class="card" onsubmit={(e) => { e.preventDefault(); save() }}>
       <h3>{editing === 'new' ? 'New site' : 'Edit site'}</h3>
+      {#if editing === 'new' && ui.pendingImport}<p class="hint">This new site will get the imported horizon.</p>{/if}
       {#if error}<div class="banner error" role="alert">{error}</div>{/if}
       <label>Name <input bind:value={name} autocomplete="off" /></label>
       <div class="row2">
@@ -217,7 +238,7 @@
   {/if}
 
   {#if horizonSite}
-    {#key horizonSite.id}
+    {#key `${horizonSite.id}:${horizonRev}`}
       <HorizonEditor site={horizonSite} bind:dirty={horizonDirty} onclose={() => (horizonSiteId = null)} />
     {/key}
   {/if}

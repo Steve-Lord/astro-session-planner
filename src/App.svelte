@@ -29,6 +29,8 @@
     const payload = readImportHash(location.hash)
     if (payload === null) return false
     ui.importPayload = payload
+    ui.pendingImport = null
+    probe = false
     history.replaceState(null, '', location.pathname + location.search + '#sites')
     tab = 'sites'
     return true
@@ -51,7 +53,9 @@
 </script>
 
 {#if ui.importPayload !== null}
-  <ImportHorizon payload={ui.importPayload} />
+  {#key ui.importPayload}
+    <ImportHorizon payload={ui.importPayload} />
+  {/key}
 {/if}
 
 <h1 class="app-title">Astro Session Planner</h1>
