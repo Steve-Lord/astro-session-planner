@@ -13,6 +13,8 @@ declare global {
   interface Window {
     __emitOrientation: (alpha: number, beta: number, gamma: number, compassHeading: number) => void
     __advanceTime: (ms: number) => void
+    /** Every stream handed out by the stubbed getUserMedia, to check that tracks get stopped. */
+    __streams: MediaStream[]
     __testNow?: number
   }
 }
@@ -64,8 +66,11 @@ export async function stubSensors(page: Page, opts: StubOptions = {}): Promise<v
       const g = c.getContext('2d')!
       g.fillStyle = '#334'
       g.fillRect(0, 0, 64, 64)
-      return c.captureStream(5)
+      const stream = c.captureStream(5)
+      window.__streams.push(stream)
+      return stream
     }
+    window.__streams = []
     if (!navigator.mediaDevices) Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: {} })
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
       configurable: true, value: () => Promise.resolve(fakeStream()),
@@ -78,4 +83,9 @@ export async function aim(page: Page, points: [heading: number, alt: number][]):
   await page.evaluate((pts) => {
     for (const [h, a] of pts) window.__emitOrientation((360 - h) % 360, 90 + a, 0, h)
   }, points)
+}
+
+/** readyState of every track of every stream the app was given. */
+export function trackStates(page: Page): Promise<string[]> {
+  return page.evaluate(() => window.__streams.flatMap((st) => st.getTracks().map((t) => t.readyState)))
 }

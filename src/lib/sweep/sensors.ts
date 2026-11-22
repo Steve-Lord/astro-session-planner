@@ -31,21 +31,28 @@ export function now(): Date {
 }
 
 /** Rear camera into `video` (muted, inline). Resolves to a stop function; rejects with the getUserMedia error. */
-export async function startCamera(video: HTMLVideoElement): Promise<() => void> {
+export async function startCamera(video: HTMLVideoElement | null | undefined): Promise<() => void> {
+  if (!video) throw new DOMException('No video element to show the camera in', 'InvalidStateError')
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-  video.muted = true
-  video.playsInline = true
-  video.setAttribute('playsinline', '')
-  video.srcObject = stream
+  const stop = () => {
+    for (const t of stream.getTracks()) t.stop()
+    if (video.srcObject === stream) video.srcObject = null
+  }
+  try {
+    video.muted = true
+    video.playsInline = true
+    video.setAttribute('playsinline', '')
+    video.srcObject = stream
+  } catch (e) {
+    stop() // never leave the camera on after a failure
+    throw e
+  }
   try {
     await video.play()
   } catch {
     // autoplay of a muted inline stream can still be refused; the frame shows once it plays
   }
-  return () => {
-    for (const t of stream.getTracks()) t.stop()
-    video.srcObject = null
-  }
+  return stop
 }
 
 /** Keeps the screen on while sweeping. A no-op where the Wake Lock API is missing or refuses. */

@@ -5,6 +5,9 @@
   import HorizonEditor from './HorizonEditor.svelte'
   import SweepView from './SweepView.svelte'
 
+  // False while another tab (or the import dialog) is showing: a running sweep pauses.
+  let { active = true }: { active?: boolean } = $props()
+
   const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const baseZones = Intl.supportedValuesOf('timeZone')
 
@@ -14,6 +17,7 @@
   let horizonRev = $state(0) // bumped so a same-site import remounts the editor
   let error = $state<string | null>(null)
   let sweepSiteId = $state<string | null>(null)
+  let sweepBins = $state(0)
   /** A just-finished sweep, handed to the editor mounted for exactly this site and revision. */
   let swept = $state.raw<{ siteId: string; rev: number; profile: HorizonProfile } | null>(null)
   let geoMsg = $state<string | null>(null)
@@ -103,7 +107,14 @@
     if (!req) return
     ui.applyImport = null
     const site = appState.sites.find((s) => s.id === req.siteId)
-    if (!site || !leaveHorizon()) return
+    if (!site) return
+    // End a sweep first; with real progress, the user decides which one to keep.
+    if (sweepSiteId !== null) {
+      if (sweepBins > 30 && !confirm('Discard the sweep in progress?')) return
+      sweepSiteId = null
+      sweepBins = 0
+    }
+    if (!leaveHorizon()) return
     editing = null
     swept = null
     site.horizon = req.profile
@@ -280,7 +291,7 @@
 
   {#if sweepSite}
     {#key sweepSite.id}
-      <SweepView site={sweepSite} onfinish={finishSweep} onmanual={sweepByHand} oncancel={() => (sweepSiteId = null)} />
+      <SweepView site={sweepSite} {active} bind:sweptBins={sweepBins} onfinish={finishSweep} onmanual={sweepByHand} oncancel={() => (sweepSiteId = null)} />
     {/key}
   {/if}
 

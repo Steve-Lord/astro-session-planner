@@ -8,16 +8,20 @@
 
   // Start panel (inside Sites) and, once running, a full-viewport camera overlay.
   // `onfinish` returns false when Sites cannot take the profile yet (unsaved edits kept); the sweep then stays open.
-  let { site, onfinish, onmanual, oncancel }: {
+  // `active` false (another tab, or the import dialog) pauses: camera, sensors and wake lock stop, the
+  // accumulator is kept, and the user resumes with a new tap. `sweptBins` reports progress to Sites.
+  let { site, onfinish, onmanual, oncancel, active = true, sweptBins = $bindable(0) }: {
     site: Site
     onfinish: (profile: HorizonProfile) => boolean
     onmanual: () => void
     oncancel: () => void
+    active?: boolean
+    sweptBins?: number
   } = $props()
 
   const MSG = {
     insecure: 'Sensors need a secure (https) page.',
-    denied: 'Motion access was refused. On iPhone: Settings › Safari › Motion & Orientation Access, then try again.',
+    denied: 'Motion access was refused. Close Safari (or the Home Screen app) completely, reopen this page, tap Start and choose Allow.',
     unsupported: 'This needs a phone or tablet with a compass.',
   }
   const STATUS: Record<Exclude<Rejection, 'invalid'>, string> = {
@@ -29,13 +33,17 @@
   }
   const STATUS_MS = 1500
   const CONFIRM_CANCEL_BINS = 30
+  /** No orientation reading this long after starting: a desktop browser that has the API but no sensor. */
+  const NO_SENSOR_MS = 2000
 
   const support = sensorSupport()
   let error = $state<string | null>(!support.secure ? MSG.insecure : !support.orientation ? MSG.unsupported : null)
   let running = $state(false)
+  let paused = $state(false)
   let video = $state<HTMLVideoElement>()
   let bins = $state.raw<boolean[]>(new Array(360).fill(false))
   const swept = $derived(bins.filter(Boolean).length)
+  $effect(() => { sweptBins = swept })
   let reading = $state<{ alt: number; az: number } | null>(null)
   let status = $state<string | null>(null)
   let gaps = $state.raw<{ from: number; to: number }[] | null>(null)
@@ -47,6 +55,7 @@
   let stopOrientation: (() => void) | null = null
   let releaseWake: (() => void) | null = null
   let statusTimer: ReturnType<typeof setTimeout> | undefined
+  let watchdog: ReturnType<typeof setTimeout> | undefined
 
   // Coverage ring: 360 one-degree arcs, north at the top, clockwise.
   const R = 50
@@ -84,10 +93,11 @@
       if (my !== session) return
       if (p === 'denied') return void (error = MSG.denied)
       error = null
+      paused = false
       running = true
       await tick()
       try {
-        const stop = await startCamera(video!)
+        const stop = await startCamera(video)
         if (my !== session) return stop()
         stopCamera = stop
       } catch (e) {
@@ -100,7 +110,15 @@
         decl = declination(site.lat, site.lon, site.elevation / 1000, now())
         acc = new SweepAccumulator({ declinationDeg: decl })
       }
-      stopOrientation = startOrientation(onSample)
+      // Any reading with real angles proves a sensor (on iOS azMag can lag until the phone is upright).
+      let heard = false
+      stopOrientation = startOrientation(onSample, () => { heard = true })
+      watchdog = setTimeout(() => {
+        if (my !== session || heard) return
+        teardown()
+        paused = false
+        error = MSG.unsupported
+      }, NO_SENSOR_MS)
       const release = await keepAwake()
       if (my !== session) release()
       else releaseWake = release
@@ -116,8 +134,17 @@
     releaseWake?.()
     stopCamera = stopOrientation = releaseWake = null
     clearTimeout(statusTimer)
+    clearTimeout(watchdog)
     status = null
   }
+
+  // Leaving the Sites tab (or an import dialog opening) pauses a running sweep.
+  $effect(() => {
+    if (!active && running) {
+      teardown()
+      paused = true
+    }
+  })
 
   function done(): void {
     if (!acc || acc.coverage().swept === 0) return showStatus('Nothing swept yet — put the line on the skyline and turn slowly')
@@ -145,7 +172,13 @@
 {#if !running}
   <section class="card" aria-label={`Sweep horizon for ${site.name}`}>
     <h3>Sweep horizon: {site.name}</h3>
-    {#if error}
+    {#if paused && !error}
+      <p class="paused" role="status">Sweep paused — {swept}/360 swept.</p>
+      <div class="actions">
+        <button type="button" class="primary" onclick={start}>Resume</button>
+        <button type="button" onclick={cancel}>Cancel</button>
+      </div>
+    {:else if error}
       <div class="banner error" role="alert">{error}</div>
       <div class="actions">
         <button type="button" onclick={onmanual}>Draw it by hand instead</button>
@@ -206,6 +239,7 @@
 <style>
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; display: grid; gap: 10px; }
   h3 { margin: 0; font-size: 16px; }
+  .paused { margin: 0; }
   .steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--text); }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .primary { background: var(--accent); border-color: var(--accent); color: #fff; }

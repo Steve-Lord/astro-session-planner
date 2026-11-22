@@ -69,7 +69,7 @@
 <!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
      survive tab switches. -->
 <div hidden={probe || tab !== 'tonight'}><Tonight /></div>
-<div hidden={probe || tab !== 'sites'}><Sites /></div>
+<div hidden={probe || tab !== 'sites'}><Sites active={!probe && tab === 'sites' && ui.importPayload === null} /></div>
 {#if probe}
   <SensorProbe />
 {:else if tab === 'gear'}
