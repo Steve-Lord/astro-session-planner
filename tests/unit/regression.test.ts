@@ -27,7 +27,6 @@ describe('regression: London, Bortle 6, S50 Pro, 2026-11-22, dual-band', () => {
   const t0 = performance.now()
   const plan = run('2026-11-22', 'dual-band')
   const ms = performance.now() - t0
-  console.log(`planNight over ${catalog.length} targets in ${ms.toFixed(0)} ms`)
 
   it('has a dark window and entries sorted by score desc', () => {
     expect(plan.darkWindow).not.toBeNull()
@@ -36,7 +35,7 @@ describe('regression: London, Bortle 6, S50 Pro, 2026-11-22, dual-band', () => {
       expect(plan.entries[i - 1].score).toBeGreaterThanOrEqual(plan.entries[i].score)
     }
   })
-  it('accounts for every target exactly once (entries + hidden, excluding never-rising)', () => {
+  it('places every catalog target exactly once across entries and hidden lists', () => {
     const all = [...entryIds(plan), ...hiddenIds(plan, 'blocked'), ...hiddenIds(plan, 'too-small'),
       ...hiddenIds(plan, 'too-faint')]
     expect(new Set(all).size).toBe(all.length)

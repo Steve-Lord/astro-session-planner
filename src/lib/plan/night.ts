@@ -76,7 +76,7 @@ export function planNight(input: PlanInput): NightPlan {
     }
     entries.push({ ...e, ...scoreEntry(e, settings, m.illum) })
   }
-  entries.sort((a, b) => b.score - a.score)
+  entries.sort((a, b) => b.score - a.score || a.target.id.localeCompare(b.target.id))
 
   return {
     siteId: site.id, date, darkWindow: ctx.dark, darkSunAltUsed, noAstroDark,

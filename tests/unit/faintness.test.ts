@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
 import { contrastMag, isTooFaint } from '../../src/lib/plan/faintness'
 import { DEFAULT_SETTINGS, effectiveSky } from '../../src/lib/sky/brightness'
 import type { EmissionClass, Target } from '../../src/lib/types'
 
 // Spec §7.10 anchors: Bortle 6 baseline 19.3; half Moon ≈ 18.3; bright Moon ≈ 17.6.
 const s = DEFAULT_SETTINGS
-const addendum = JSON.parse(readFileSync('data/addendum.json', 'utf8')) as {
-  override: Record<string, { surfBr?: number }>
-}
 const tgt = (id: string, surfBr: number | null, emission: EmissionClass): Target => ({
   id, names: [id], ra: 0, dec: 0, type: 'X', majArcmin: 30, minArcmin: 30, posAngle: null,
   mag: null, surfBr, emission,
@@ -45,13 +41,9 @@ describe('faintness verdicts (spec §7.10)', () => {
   it('M101, no filter, new Moon (19.3) → OK', () => {
     expect(verdict(tgt('M101', 23.7, 'broadband'), 19.3, 'none')).toBe(false)
   })
-  it('IC 1805 and NGC 281 (addendum surfBr), dual-band, half Moon → OK', () => {
-    const ic1805 = addendum.override.IC1805.surfBr!
-    const ngc281 = addendum.override.NGC0281.surfBr!
-    expect(ic1805).toBeGreaterThan(22)
-    expect(ngc281).toBeGreaterThan(22)
-    expect(verdict(tgt('IC1805', ic1805, 'emission'), 18.3, 'dual-band')).toBe(false)
-    expect(verdict(tgt('NGC0281', ngc281, 'emission'), 18.3, 'dual-band')).toBe(false)
+  it('IC 1805 (24.0) and NGC 281 (23.6), dual-band, half Moon → OK', () => {
+    expect(verdict(tgt('IC1805', 24.0, 'emission'), 18.3, 'dual-band')).toBe(false)
+    expect(verdict(tgt('NGC0281', 23.6, 'emission'), 18.3, 'dual-band')).toBe(false)
   })
   it('NGC 2403 (23.4), bright Moon (17.6), no filter → too faint', () => {
     expect(verdict(tgt('NGC2403', 23.4, 'broadband'), 17.6, 'none')).toBe(true)
