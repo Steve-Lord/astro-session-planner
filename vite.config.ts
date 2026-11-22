@@ -10,10 +10,10 @@ export default defineConfig({
     svelte(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'catalog.json'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'catalog.json'],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,svg,json}'],
+        globPatterns: ['**/*.{js,css,html,svg,json,png}'],
       },
       manifest: {
         name: 'Astro Session Planner',
@@ -24,7 +24,8 @@ export default defineConfig({
         background_color: '#0b1020',
         theme_color: '#0b1020',
         icons: [
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         ],
       },
     }),
