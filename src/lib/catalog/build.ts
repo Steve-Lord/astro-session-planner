@@ -1,4 +1,5 @@
 import type { EmissionClass, Target } from '../types';
+import { estimateSurfBr } from './surfaceBrightness';
 
 export interface Addendum {
   add: Target[];
@@ -61,6 +62,10 @@ function designation(id: string): string {
   return m ? `${m[1]} ${m[2]}` : id;
 }
 
+/** Drop underscore-prefixed keys (`_note` derivations) from addendum entries. */
+const withoutNotes = (t: Target): Target =>
+  Object.fromEntries(Object.entries(t).filter(([k]) => !k.startsWith('_'))) as unknown as Target;
+
 export function buildCatalog(csv: string, addendum: Addendum): Target[] {
   const [header, ...rows] = parseCsv(csv);
   const col = (name: string) => header.indexOf(name);
@@ -83,11 +88,9 @@ export function buildCatalog(csv: string, addendum: Addendum): Target[] {
     const maj = num(r[idx.maj]);
     const min = num(r[idx.min]);
     const mag = num(r[idx.v]) ?? num(r[idx.b]);
-    // OpenNGC SurfBr is already mag/arcsec² (e.g. M31 = 23.63), so it is used as-is.
-    let surfBr = num(r[idx.sb]);
-    if (surfBr === null && mag !== null && maj !== null && min !== null) {
-      surfBr = mag + 2.5 * Math.log10((Math.PI / 4) * maj * min * 3600);
-    }
+    // OpenNGC SurfBr is already mag/arcsec² (e.g. M31 = 23.63), so it is used as-is. Otherwise estimate
+    // only where the magnitude is the object's own light (see surfaceBrightness.ts).
+    const surfBr = num(r[idx.sb]) ?? estimateSurfBr(type, mag, maj, min);
     const names = [designation(id)];
     const mNum = num(r[idx.m]);
     if (mNum !== null) names.push(`M ${mNum}`);
@@ -109,8 +112,8 @@ export function buildCatalog(csv: string, addendum: Addendum): Target[] {
   }
   for (const c of addendum.complexes) {
     for (const h of c.hides) byId.delete(h);
-    byId.set(c.target.id, c.target);
+    byId.set(c.target.id, withoutNotes(c.target));
   }
-  for (const t of addendum.add) byId.set(t.id, t);
+  for (const t of addendum.add) byId.set(t.id, withoutNotes(t));
   return [...byId.values()];
 }

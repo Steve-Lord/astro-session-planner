@@ -70,4 +70,105 @@ describe('regression: London, 2026-11-24 (near full Moon), no filter', () => {
     expect(plan.moon.illumination).toBeGreaterThan(0.9)
     expect(hiddenIds(plan, 'too-faint')).toContain('NGC0598')
   })
+  it('(d) M101 and NGC 2403 are too faint under a bright Moon', () => {
+    expect(hiddenIds(plan, 'too-faint')).toContain('NGC5457')
+    expect(hiddenIds(plan, 'too-faint')).toContain('NGC2403')
+  })
+  it('broadband-faint emission (Heart, Pacman) is too faint with no filter at full Moon', () => {
+    expect(hiddenIds(plan, 'too-faint')).toContain('IC1805')
+    expect(hiddenIds(plan, 'too-faint')).toContain('NGC0281')
+  })
+})
+
+// C1 (final review): the top of the shortlist must be trustworthy on real data.
+const rank = (p: NightPlan, id: string) => entryIds(p).indexOf(id) + 1   // 0 = not in entries
+const top = (p: NightPlan, n: number) => p.entries.slice(0, n)
+
+describe('regression (a): London, 2026-12-09 (new Moon), no filter', () => {
+  const plan = run('2026-12-09', 'none')
+  it('is a new-Moon night', () => {
+    expect(plan.moon.illumination).toBeLessThan(0.05)
+  })
+  it('M31, M33 and M42 are in the top 20', () => {
+    const ids = top(plan, 20).map((e) => e.target.id)
+    expect(ids).toContain('NGC0224')
+    expect(ids).toContain('NGC0598')
+    expect(ids).toContain('NGC1976')
+  })
+  it('IC 444 (obscure reflection nebula) is not #1 and not in the top 20', () => {
+    expect(plan.entries[0].target.id).not.toBe('IC0444')
+    expect(top(plan, 20).map((e) => e.target.id)).not.toContain('IC0444')
+  })
+  it('(d) M101 and NGC 2403 are recommended (not too faint)', () => {
+    expect(rank(plan, 'NGC5457')).toBeGreaterThan(0)
+    expect(rank(plan, 'NGC2403')).toBeGreaterThan(0)
+  })
+  it('M81 and M51 are in the top 20', () => {
+    const ids = top(plan, 20).map((e) => e.target.id)
+    expect(ids).toContain('NGC3031')
+    expect(ids).toContain('NGC5194')
+  })
+  it('every top-20 entry has a known surface brightness', () => {
+    for (const e of top(plan, 20)) expect(e.contrastMag, e.target.id).not.toBeNull()
+  })
+  it('M31 is flagged as a mosaic', () => {
+    expect(plan.entries.find((e) => e.target.id === 'NGC0224')!.fit.label).toBe('mosaic')
+  })
+  it('planetaries under ~1.5′ (M57, Cat\'s Eye) are too small', () => {
+    expect(hiddenIds(plan, 'too-small')).toContain('NGC6720')
+    expect(hiddenIds(plan, 'too-small')).toContain('NGC6543')
+  })
+})
+
+describe('regression (b): London, 2026-11-22 (96% Moon), no filter', () => {
+  const plan = run('2026-11-22', 'none')
+  it('is a bright-Moon night', () => {
+    expect(plan.moon.illumination).toBeGreaterThan(0.9)
+  })
+  it('no reflection nebula in the top 10', () => {
+    for (const e of top(plan, 10)) expect(e.target.type, e.target.id).not.toBe('RfN')
+  })
+  it('the Iris Nebula (reflection) is too faint', () => {
+    expect(hiddenIds(plan, 'too-faint')).toContain('NGC7023')
+  })
+})
+
+describe('regression (c): London, 2026-11-17 (half Moon), dual-band', () => {
+  const plan = run('2026-11-17', 'dual-band')
+  it('is a roughly half-Moon night', () => {
+    expect(plan.moon.illumination).toBeGreaterThan(0.4)
+    expect(plan.moon.illumination).toBeLessThan(0.7)
+  })
+  it('NGC 7000, IC 1805 and NGC 281 are in the top 15', () => {
+    const ids = top(plan, 15).map((e) => e.target.id)
+    expect(ids).toContain('NGC7000')
+    expect(ids).toContain('IC1805')
+    expect(ids).toContain('NGC0281')
+  })
+  it('the top 10 are all emission targets', () => {
+    for (const e of top(plan, 10)) expect(e.target.emission, e.target.id).toBe('emission')
+  })
+  it('the Rosette appears once, as a complex', () => {
+    const ids = entryIds(plan)
+    expect(ids).toContain('RosetteComplex')
+    for (const part of ['NGC2237', 'NGC2238', 'NGC2239', 'NGC2246']) expect(ids).not.toContain(part)
+  })
+})
+
+describe('regression (c): London, 2026-12-09 (new Moon), dual-band — Orion up', () => {
+  const plan = run('2026-12-09', 'dual-band')
+  it('IC 434 (Horsehead region) is recommended, not too faint', () => {
+    expect(hiddenIds(plan, 'too-faint')).not.toContain('IC0434')
+    expect(rank(plan, 'IC0434')).toBeGreaterThan(0)
+  })
+})
+
+describe('regression: London, 2026-11-20 (83% Moon), dual-band', () => {
+  const plan = run('2026-11-20', 'dual-band')
+  it('emission favourites survive a bright Moon with dual-band (top 20)', () => {
+    const ids = top(plan, 20).map((e) => e.target.id)
+    expect(ids).toContain('NGC7000')
+    expect(ids).toContain('IC1805')
+    expect(ids).toContain('NGC0281')
+  })
 })

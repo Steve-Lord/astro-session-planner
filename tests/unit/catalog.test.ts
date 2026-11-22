@@ -40,6 +40,19 @@ describe('buildCatalog', () => {
     expect(t.surfBr).toBeCloseTo(4 + 2.5 * Math.log10((Math.PI / 4) * 120 * 30 * 3600), 1);
   });
 
+  it('does not estimate surface brightness where the magnitude is a star or cluster (C1)', () => {
+    const extra = csv.trimEnd() + '\nIC5146;Cl+N;21:53:28.76;+47:16:00.9;Cyg;10.00;10.00;;7.82;7.20;;;;;;;;;;;;;;;;;;;;Cocoon Nebula;;;\n';
+    const t = buildCatalog(extra, none).find((x) => x.id === 'IC5146')!;
+    expect(t.mag).toBe(7.2);
+    expect(t.surfBr).toBeNull();
+  });
+
+  it('strips _note keys from complexes and added targets', () => {
+    const noted = { ...veil, _note: 'derivation' } as Target;
+    const out = buildCatalog(csv, { add: [{ ...noted, id: 'X1' }], override: {}, complexes: [{ target: noted, hides: [] }] });
+    for (const id of ['VeilComplex', 'X1']) expect(out.find((t) => t.id === id)).not.toHaveProperty('_note');
+  });
+
   it('complexes hide their parts and add one combined target', () => {
     const out = buildCatalog(csv, addendum);
     const ids = out.map((t) => t.id);

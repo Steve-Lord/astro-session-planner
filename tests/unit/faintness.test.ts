@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { contrastMag, isTooFaint } from '../../src/lib/plan/faintness'
 import { DEFAULT_SETTINGS, effectiveSky } from '../../src/lib/sky/brightness'
+import { WEIGHTS } from '../../src/lib/plan/score'
 import type { EmissionClass, Target } from '../../src/lib/types'
 
 // Spec §7.10 anchors: Bortle 6 baseline 19.3; half Moon ≈ 18.3; bright Moon ≈ 17.6.
 const s = DEFAULT_SETTINGS
-const tgt = (id: string, surfBr: number | null, emission: EmissionClass): Target => ({
-  id, names: [id], ra: 0, dec: 0, type: 'X', majArcmin: 30, minArcmin: 30, posAngle: null,
+const tgt = (id: string, surfBr: number | null, emission: EmissionClass, type = 'X'): Target => ({
+  id, names: [id], ra: 0, dec: 0, type, majArcmin: 30, minArcmin: 30, posAngle: null,
   mag: null, surfBr, emission,
 })
 const verdict = (t: Target, sky: number, filter: 'none' | 'dual-band') =>
@@ -15,6 +16,11 @@ const verdict = (t: Target, sky: number, filter: 'none' | 'dual-band') =>
 describe('contrastMag', () => {
   it('is surface brightness minus effective sky', () => {
     expect(contrastMag(tgt('a', 22.8, 'emission'), 20.8)).toBeCloseTo(2.0, 9)
+  })
+  it('brightens galaxy surface brightness by WEIGHTS.galaxySbOffsetMag (D25 B-band mean → V bright body)', () => {
+    expect(contrastMag(tgt('g', 23.7, 'broadband', 'G'), 19.3)).toBeCloseTo(23.7 - WEIGHTS.galaxySbOffsetMag - 19.3, 9)
+    expect(contrastMag(tgt('g', 23.7, 'broadband', 'GPair'), 19.3)).toBeCloseTo(23.7 - WEIGHTS.galaxySbOffsetMag - 19.3, 9)
+    expect(contrastMag(tgt('n', 23.7, 'emission', 'HII'), 19.3)).toBeCloseTo(4.4, 9)
   })
   it('is null when surface brightness is unknown', () => {
     expect(contrastMag(tgt('a', null, 'emission'), 20)).toBeNull()
@@ -36,16 +42,16 @@ describe('faintness verdicts (spec §7.10)', () => {
     expect(verdict(tgt('NGC7000', 22.8, 'emission'), 18.3, 'dual-band')).toBe(false)
   })
   it('M101 (23.7, broadband), dual-band, half Moon (18.3) → too faint', () => {
-    expect(verdict(tgt('M101', 23.7, 'broadband'), 18.3, 'dual-band')).toBe(true)
+    expect(verdict(tgt('M101', 23.7, 'broadband', 'G'), 18.3, 'dual-band')).toBe(true)
   })
   it('M101, no filter, new Moon (19.3) → OK', () => {
-    expect(verdict(tgt('M101', 23.7, 'broadband'), 19.3, 'none')).toBe(false)
+    expect(verdict(tgt('M101', 23.7, 'broadband', 'G'), 19.3, 'none')).toBe(false)
   })
   it('IC 1805 (24.0) and NGC 281 (23.6), dual-band, half Moon → OK', () => {
     expect(verdict(tgt('IC1805', 24.0, 'emission'), 18.3, 'dual-band')).toBe(false)
     expect(verdict(tgt('NGC0281', 23.6, 'emission'), 18.3, 'dual-band')).toBe(false)
   })
   it('NGC 2403 (23.4), bright Moon (17.6), no filter → too faint', () => {
-    expect(verdict(tgt('NGC2403', 23.4, 'broadband'), 17.6, 'none')).toBe(true)
+    expect(verdict(tgt('NGC2403', 23.4, 'broadband', 'G'), 17.6, 'none')).toBe(true)
   })
 })

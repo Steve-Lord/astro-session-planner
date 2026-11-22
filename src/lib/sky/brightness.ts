@@ -4,7 +4,10 @@ import type { EmissionClass, FilterKind, Settings, Site } from '../types';
 export const BORTLE_SQM = [21.9, 21.6, 21.4, 20.8, 20.1, 19.3, 18.6, 18.0, 17.5];
 
 export const DEFAULT_SETTINGS: Settings = {
-  clearanceDeg: 2, darkSunAlt: -18, faintLimitMag: 5.0,
+  // faintLimitMag 5.0 → 4.0 (C1, with WEIGHTS.galaxySbOffsetMag 1.25): calibrated on the §7.10 set in
+  // tests/unit/regression.test.ts — M101/NGC 2403 OK on a new Moon and too faint at full Moon,
+  // NGC 7000/IC 1805/NGC 281/IC 434 OK with dual-band, Heart and Pacman too faint unfiltered at Bortle 6.
+  clearanceDeg: 2, darkSunAlt: -18, faintLimitMag: 4.0,
   dualBandGainMag: 2.5, narrowbandGainMag: 3.5, broadbandFilterPenaltyMag: 0.3, tooSmallFill: 0.05,
 };
 
