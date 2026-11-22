@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",
-    "date-fns-tz": "^3.2.0"
+    "date-fns-tz": "^3.2.0",
+    "qrcode-generator": "^2.0.4"
   }
 }
