@@ -2,9 +2,9 @@
   import { appState } from '../lib/store/state.svelte'
   import { exportState, importState, type AppState } from '../lib/store/state'
   import { DEFAULT_SETTINGS } from '../lib/sky/brightness'
-  import { EMISSION } from '../lib/catalog/build'
+  import { customTarget } from '../lib/catalog/custom'
   import { parseDec, parseRa } from '../lib/catalog/coords'
-  import type { Settings, Target } from '../lib/types'
+  import type { Settings } from '../lib/types'
 
   const FIELDS: { key: Exclude<keyof Settings, 'darkSunAlt'>; label: string; step: string }[] = [
     { key: 'clearanceDeg', label: 'Horizon clearance (°)', step: '0.5' },
@@ -54,11 +54,9 @@
     if (!(tMaj.trim() !== '' && maj > 0)) return void (tError = 'Major axis must be a positive number of arcminutes.')
     if (!(min > 0)) return void (tError = 'Minor axis must be a positive number of arcminutes.')
     if (mag !== null && !Number.isFinite(mag)) return void (tError = 'Magnitude must be a number.')
-    const target: Target = {
-      id: `custom-${crypto.randomUUID()}`, names: [name], ra, dec, type: tType,
-      majArcmin: maj, minArcmin: min, posAngle: null, mag, surfBr: null, emission: EMISSION[tType],
-    }
-    appState.customTargets.push(target)
+    appState.customTargets.push(customTarget({
+      id: `custom-${crypto.randomUUID()}`, name, ra, dec, majArcmin: maj, minArcmin: min, type: tType, mag,
+    }))
     tName = tRa = tDec = tMaj = tMin = tMag = ''
     tError = null
   }
