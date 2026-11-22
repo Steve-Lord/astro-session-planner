@@ -50,12 +50,23 @@ describe('scoreEntry', () => {
     expect(WEIGHTS.unknownContrast).toBe(0.3)
     expect(scoreEntry(base({ contrastMag: null }), s, 0).breakdown.contrast).toBe(0.3)
   })
-  it('moon factor applies only when the Moon is up in the best window and illum > 0.3', () => {
-    expect(scoreEntry(base({ minMoonSepDeg: 35 }), s, 0.8).breakdown.moon).toBeCloseTo(0.5, 9)
-    expect(scoreEntry(base({ minMoonSepDeg: 5 }), s, 0.8).breakdown.moon).toBe(0.3)
-    expect(scoreEntry(base({ minMoonSepDeg: 90 }), s, 0.8).breakdown.moon).toBe(1)
-    expect(scoreEntry(base({ minMoonSepDeg: 35 }), s, 0.3).breakdown.moon).toBe(1)
-    expect(scoreEntry(base({ minMoonSepDeg: null }), s, 0.9).breakdown.moon).toBe(1)
+  it('moon factor applies only for unknown contrast, Moon up in the best window and illum > 0.3 (R15)', () => {
+    const u = (o: Partial<Omit<PlanEntry, 'score' | 'breakdown'>>) => base({ contrastMag: null, ...o })
+    expect(scoreEntry(u({ minMoonSepDeg: 35 }), s, 0.8).breakdown.moon).toBeCloseTo(0.5, 9)
+    expect(scoreEntry(u({ minMoonSepDeg: 5 }), s, 0.8).breakdown.moon).toBe(0.3)
+    expect(scoreEntry(u({ minMoonSepDeg: 90 }), s, 0.8).breakdown.moon).toBe(1)
+    expect(scoreEntry(u({ minMoonSepDeg: 35 }), s, 0.3).breakdown.moon).toBe(1)
+    expect(scoreEntry(u({ minMoonSepDeg: null }), s, 0.9).breakdown.moon).toBe(1)
+  })
+  it('known contrast near a bright Moon gets moon factor 1 (moonlight is already in the contrast)', () => {
+    const r = scoreEntry(base({ contrastMag: 2.5, minMoonSepDeg: 15 }), s, 0.95)
+    expect(r.breakdown.moon).toBe(1)
+    expect(r.score).toBeCloseTo(0.5, 9)
+  })
+  it('unknown contrast near a bright Moon is penalised', () => {
+    const r = scoreEntry(base({ contrastMag: null, minMoonSepDeg: 15 }), s, 0.95)
+    expect(r.breakdown.moon).toBe(0.3)
+    expect(r.score).toBeCloseTo(0.3 * 0.3, 9)
   })
   it('exposes weights in one WEIGHTS object', () => {
     expect(WEIGHTS.fit.good).toBe(1)

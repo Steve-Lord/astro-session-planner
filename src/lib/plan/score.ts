@@ -11,7 +11,11 @@ export const WEIGHTS = {
   contrastMin: 0.1,
   /** Contrast factor when surface brightness is unknown: listed, but kept off the top of the shortlist. */
   unknownContrast: 0.3,
-  /** Moon factor = clamp((sep − moonSepZeroDeg) / moonSepSpanDeg, moonMin, 1). */
+  /**
+   * Moon factor = clamp((sep − moonSepZeroDeg) / moonSepSpanDeg, moonMin, 1), applied ONLY when contrast
+   * is unknown. A known contrast already uses moonlitSqm (phase, altitude, separation), so a second
+   * Moon penalty would double-count moonlight (ruling R15).
+   */
   moonSepZeroDeg: 10,
   moonSepSpanDeg: 50,
   moonMin: 0.3,
@@ -25,7 +29,8 @@ const sinDeg = (d: number) => Math.sin(d * Math.PI / 180)
 /**
  * Ranking score for a plan entry.
  * `moonIllum` is the Moon's illuminated fraction at the best window's midpoint; the Moon factor
- * applies only when the Moon is up during the best window (minMoonSepDeg non-null) and moonIllum > 0.3.
+ * applies only when contrastMag is null (a known contrast already includes moonlight), the Moon is up
+ * during the best window (minMoonSepDeg non-null) and moonIllum > 0.3.
  */
 export function scoreEntry(
   e: Omit<PlanEntry, 'score' | 'breakdown'>, s: Settings, moonIllum: number,
@@ -39,7 +44,7 @@ export function scoreEntry(
   const contrast = e.contrastMag === null
     ? W.unknownContrast
     : clamp((s.faintLimitMag - e.contrastMag) / s.faintLimitMag, W.contrastMin, 1)
-  const moon = e.minMoonSepDeg !== null && moonIllum > W.moonIllumThreshold
+  const moon = e.contrastMag === null && e.minMoonSepDeg !== null && moonIllum > W.moonIllumThreshold
     ? clamp((e.minMoonSepDeg - W.moonSepZeroDeg) / W.moonSepSpanDeg, W.moonMin, 1)
     : 1
   const breakdown: ScoreBreakdown = { hours, altitude, fit, contrast, moon }
