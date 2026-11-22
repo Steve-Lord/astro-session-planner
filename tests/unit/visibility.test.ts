@@ -26,6 +26,12 @@ describe('buildContext', () => {
     expect(r.darkSunAltUsed).toBe(-12)
     expect(r.ctx).not.toBeNull()
   })
+  it('returns no context when there is no nautical darkness either (60°N midsummer)', () => {
+    const r = buildContext({ ...london, lat: 60, lon: 10, timezone: 'Europe/Oslo' }, gear, settings, '2026-06-21')
+    expect(r.ctx).toBeNull()
+    expect(r.noAstroDark).toBe(true)
+    expect(r.darkSunAltUsed).toBe(-12)
+  })
   it('uses astronomical dark in winter', () => {
     const r = buildContext(london, gear, settings, '2026-12-21')
     expect(r.noAstroDark).toBe(false)

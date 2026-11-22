@@ -120,6 +120,12 @@ describe('frameClears', () => {
     p.altitudes[50] = NaN;
     expect(frameClears(p, false, 60, 50, 1, 2)).toBe(false);
   });
+  it('fails closed on a non-finite altitude or half-diagonal (M3)', () => {
+    expect(frameClears(null, false, NaN, 100, 1.4, 2)).toBe(false);
+    expect(frameClears(null, false, 60, 100, NaN, 2)).toBe(false);
+    expect(frameClears(null, false, 60, 100, Infinity, 2)).toBe(false);
+    expect(frameClears(null, false, 60, NaN, 1.4, 2)).toBe(false);
+  });
   it('treats a null profile as height 0', () => {
     expect(frameClears(null, false, 5, 100, 1.4, 2)).toBe(true);
     expect(frameClears(null, false, 3, 100, 1.4, 2)).toBe(false);

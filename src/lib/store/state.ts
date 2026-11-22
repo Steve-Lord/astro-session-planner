@@ -1,4 +1,4 @@
-import type { Gear, Settings, Site, Target } from '../types';
+import type { EmissionClass, FilterKind, Gear, Settings, Site, Target } from '../types';
 import { SEESTAR_S50_PRO } from '../gear/fit';
 import { DEFAULT_SETTINGS } from '../sky/brightness';
 
@@ -11,6 +11,8 @@ export interface AppState {
   selectedGearId: string;
   selectedFilterId: string;
   customTargets: Target[];
+  /** Ids of one-time hints the user has dismissed (e.g. 'ios-install', 'backup-after-horizon'). */
+  dismissed: string[];
 }
 
 export const STORAGE_KEY = 'asp:v1';
@@ -27,6 +29,7 @@ export function defaultState(): AppState {
     selectedGearId: SEESTAR_S50_PRO.id,
     selectedFilterId: DEFAULT_FILTER_ID,
     customTargets: [],
+    dismissed: [],
   };
 }
 
@@ -57,6 +60,50 @@ function checkHorizon(h: unknown, path: string): void {
   }
 }
 
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const EMISSIONS: EmissionClass[] = ['emission', 'broadband', 'mixed'];
+const FILTER_KINDS: FilterKind[] = ['none', 'broadband-lp', 'dual-band', 'narrowband'];
+
+function validTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkTarget(t: Record<string, unknown>, path: string): void {
+  if (typeof t.id !== 'string') throw new Error(`${path}.id must be a string`);
+  if (!Array.isArray(t.names) || t.names.length === 0 || !t.names.every((n) => typeof n === 'string')) {
+    throw new Error(`${path}.names must be a non-empty list of strings`);
+  }
+  if (!finite(t.ra)) throw new Error(`${path}.ra must be a finite number`);
+  if (!finite(t.dec)) throw new Error(`${path}.dec must be a finite number`);
+  if (typeof t.type !== 'string') throw new Error(`${path}.type must be a string`);
+  for (const k of ['majArcmin', 'minArcmin', 'posAngle', 'mag', 'surfBr']) {
+    if (t[k] === undefined) t[k] = null;
+    else if (t[k] !== null && !finite(t[k])) throw new Error(`${path}.${k} must be null or a finite number`);
+  }
+  if (!EMISSIONS.includes(t.emission as EmissionClass)) throw new Error(`${path}.emission must be one of ${EMISSIONS.join(', ')}`);
+}
+
+function checkGear(g: Record<string, unknown>, path: string): void {
+  if (typeof g.id !== 'string') throw new Error(`${path}.id must be a string`);
+  if (typeof g.name !== 'string') throw new Error(`${path}.name must be a string`);
+  for (const k of ['focalLengthMm', 'sensorWmm', 'sensorHmm', 'pixelUm', 'minAltDeg', 'maxAltDeg']) {
+    if (!finite(g[k]) || (g[k] as number) <= 0) throw new Error(`${path}.${k} must be a positive number`);
+  }
+  if (!Array.isArray(g.filters)) throw new Error(`${path}.filters must be an array`);
+  g.filters.forEach((f: unknown, j: number) => {
+    const fp = `${path}.filters[${j}]`;
+    if (!isObj(f)) throw new Error(`${fp} must be an object`);
+    if (typeof f.id !== 'string') throw new Error(`${fp}.id must be a string`);
+    if (typeof f.name !== 'string') throw new Error(`${fp}.name must be a string`);
+    if (!FILTER_KINDS.includes(f.kind as FilterKind)) throw new Error(`${fp}.kind must be one of ${FILTER_KINDS.join(', ')}`);
+  });
+}
+
 /** Validate untrusted data and normalise it into an AppState; throws Error naming the first problem. */
 function parseState(raw: unknown): AppState {
   if (!isObj(raw)) throw new Error('Backup data must be an object');
@@ -73,7 +120,9 @@ function parseState(raw: unknown): AppState {
     if (typeof s.name !== 'string') throw new Error(`sites[${i}].name must be a string`);
     if (typeof s.lat !== 'number' || !Number.isFinite(s.lat)) throw new Error(`sites[${i}].lat must be a number`);
     if (typeof s.lon !== 'number' || !Number.isFinite(s.lon)) throw new Error(`sites[${i}].lon must be a number`);
-    if (typeof s.timezone !== 'string') throw new Error(`sites[${i}].timezone must be a string`);
+    if (typeof s.timezone !== 'string' || !validTimeZone(s.timezone)) {
+      throw new Error(`sites[${i}].timezone must be a valid IANA time zone`);
+    }
     if (s.sky === undefined) s.sky = {};
     else if (!isObj(s.sky)) throw new Error(`sites[${i}].sky must be an object`);
     if (typeof s.elevation !== 'number' || !Number.isFinite(s.elevation)) s.elevation = 0;
@@ -84,14 +133,11 @@ function parseState(raw: unknown): AppState {
   });
   (raw.gear as unknown[]).forEach((g, i) => {
     if (!isObj(g)) throw new Error(`gear[${i}] must be an object`);
-    if (typeof g.id !== 'string') throw new Error(`gear[${i}].id must be a string`);
-    if (typeof g.name !== 'string') throw new Error(`gear[${i}].name must be a string`);
-    if (!Array.isArray(g.filters)) throw new Error(`gear[${i}].filters must be an array`);
+    checkGear(g, `gear[${i}]`);
   });
   (raw.customTargets as unknown[]).forEach((t, i) => {
     if (!isObj(t)) throw new Error(`customTargets[${i}] must be an object`);
-    if (typeof t.id !== 'string') throw new Error(`customTargets[${i}].id must be a string`);
-    if (typeof t.ra !== 'number' || typeof t.dec !== 'number') throw new Error(`customTargets[${i}] ra/dec must be numbers`);
+    checkTarget(t, `customTargets[${i}]`);
   });
 
   const gear = raw.gear as Gear[];
@@ -105,10 +151,13 @@ function parseState(raw: unknown): AppState {
       : filterIds.includes(DEFAULT_FILTER_ID)
         ? DEFAULT_FILTER_ID
         : (filterIds[0] ?? DEFAULT_FILTER_ID);
+  // M4: an unresolved selection falls back to the default site, else the first.
+  const typedSites = sites as Site[];
   const selectedSiteId =
-    typeof raw.selectedSiteId === 'string' && (sites as Site[]).some((s) => s.id === raw.selectedSiteId)
+    typeof raw.selectedSiteId === 'string' && typedSites.some((s) => s.id === raw.selectedSiteId)
       ? raw.selectedSiteId
-      : null;
+      : ((typedSites.find((s) => s.isDefault) ?? typedSites[0])?.id ?? null);
+  const dismissed = Array.isArray(raw.dismissed) ? raw.dismissed.filter((d): d is string => typeof d === 'string') : [];
 
   return {
     version: 1,
@@ -119,6 +168,7 @@ function parseState(raw: unknown): AppState {
     selectedGearId: selGear.id,
     selectedFilterId: selFilter,
     customTargets: raw.customTargets as Target[],
+    dismissed,
   };
 }
 

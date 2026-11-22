@@ -109,9 +109,18 @@ describe('hardening', () => {
   it('rejects non-object settings', () => {
     expect(() => importState(JSON.stringify({ ...defaultState(), settings: 5 }))).toThrow('settings must be an object');
   });
-  it('unresolved selectedSiteId becomes null', () => {
-    const j = JSON.stringify({ ...defaultState(), sites: [site], selectedSiteId: 'ghost' });
-    expect(importState(j).selectedSiteId).toBeNull();
+  it('unresolved selectedSiteId falls back to the default site (M4)', () => {
+    const other = { ...site, id: 's2', isDefault: false };
+    const j = JSON.stringify({ ...defaultState(), sites: [other, site], selectedSiteId: 'ghost' });
+    expect(importState(j).selectedSiteId).toBe('s1');
+  });
+  it('null selectedSiteId with sites falls back to the first site when none is default (M4)', () => {
+    const a = { ...site, id: 'a', isDefault: false };
+    const b = { ...site, id: 'b', isDefault: false };
+    expect(importState(JSON.stringify({ ...defaultState(), sites: [a, b], selectedSiteId: null })).selectedSiteId).toBe('a');
+  });
+  it('selectedSiteId stays null with no sites', () => {
+    expect(importState(JSON.stringify({ ...defaultState(), selectedSiteId: 'ghost' })).selectedSiteId).toBeNull();
   });
   it('wrong-typed settings fall back; unknown keys dropped; darkSunAlt validated', () => {
     const j = JSON.stringify({ ...defaultState(), settings: { faintLimitMag: 'x', darkSunAlt: -15, bogus: 1, clearanceDeg: 4 } });
@@ -163,5 +172,58 @@ describe('site normalisation on import', () => {
     expect(() => importState(backup({ horizon: horizon({ seasonal: new Array(360).fill(1) }) }))).toThrow('sites[0].horizon.seasonal');
     const bad = new Array(360).fill(0); bad[7] = 'x';
     expect(() => importState(backup({ horizon: horizon({ leafOffAltitudes: bad }) }))).toThrow('sites[0].horizon.leafOffAltitudes');
+  });
+});
+
+describe('element-level validation (D1)', () => {
+  const custom = { id: 'c1', names: ['My nebula'], ra: 10, dec: 20, type: 'EmN', majArcmin: 10, minArcmin: 5,
+    posAngle: null, mag: 8, surfBr: null, emission: 'emission' };
+  const imp = (patch: Record<string, unknown>) => importState(JSON.stringify({ ...defaultState(), ...patch }));
+  const withTarget = (t: Record<string, unknown>) => imp({ customTargets: [{ ...custom, ...t }] });
+
+  it('accepts a valid custom target', () => {
+    expect(withTarget({}).customTargets[0]).toEqual(custom);
+  });
+  it.each([
+    [{ names: 'x' }, 'customTargets[0].names'],
+    [{ names: [] }, 'customTargets[0].names'],
+    [{ names: [1] }, 'customTargets[0].names'],
+    [{ ra: Infinity }, 'customTargets[0].ra'],
+    [{ dec: null }, 'customTargets[0].dec'],
+    [{ majArcmin: 'big' }, 'customTargets[0].majArcmin'],
+    [{ minArcmin: 'NaN' }, 'customTargets[0].minArcmin'],
+    [{ posAngle: '45' }, 'customTargets[0].posAngle'],
+    [{ mag: {} }, 'customTargets[0].mag'],
+    [{ surfBr: true }, 'customTargets[0].surfBr'],
+    [{ emission: 'radio' }, 'customTargets[0].emission'],
+    [{ type: 3 }, 'customTargets[0].type'],
+  ])('rejects custom target %o naming %s', (patch, field) => {
+    expect(() => withTarget(patch)).toThrow(field);
+  });
+  it('rejects an invalid site timezone naming the field', () => {
+    expect(() => imp({ sites: [{ ...site, timezone: 'Mars/Olympus' }] })).toThrow('sites[0].timezone');
+  });
+  const gear = SEESTAR_S50_PRO;
+  it.each(['focalLengthMm', 'sensorWmm', 'sensorHmm', 'pixelUm', 'minAltDeg', 'maxAltDeg'])(
+    'rejects non-positive or non-finite gear.%s', (k) => {
+      expect(() => imp({ gear: [{ ...gear, [k]: 0 }] })).toThrow(`gear[0].${k}`);
+      expect(() => imp({ gear: [{ ...gear, [k]: 'x' }] })).toThrow(`gear[0].${k}`);
+    });
+  it('rejects malformed filters naming the field', () => {
+    expect(() => imp({ gear: [{ ...gear, filters: [{ id: 'f', name: 'F', kind: 'uv' }] }] })).toThrow('gear[0].filters[0].kind');
+    expect(() => imp({ gear: [{ ...gear, filters: [{ id: 1, name: 'F', kind: 'none' }] }] })).toThrow('gear[0].filters[0].id');
+    expect(() => imp({ gear: [{ ...gear, filters: [null] }] })).toThrow('gear[0].filters[0]');
+  });
+});
+
+describe('dismissed hints (I4)', () => {
+  it('defaults to none and round-trips', () => {
+    expect(defaultState().dismissed).toEqual([]);
+    const s = { ...defaultState(), dismissed: ['ios-install'] };
+    expect(importState(exportState(s)).dismissed).toEqual(['ios-install']);
+  });
+  it('drops a malformed dismissed list', () => {
+    expect(importState(JSON.stringify({ ...defaultState(), dismissed: 'x' })).dismissed).toEqual([]);
+    expect(importState(JSON.stringify({ ...defaultState(), dismissed: ['a', 2] })).dismissed).toEqual(['a']);
   });
 });

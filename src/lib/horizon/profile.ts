@@ -41,6 +41,8 @@ export function frameClears(
 ): boolean {
   const span = halfDiagDeg / Math.max(Math.cos((alt * Math.PI) / 180), 0.1);
   const bottom = alt - halfDiagDeg;
+  // Fail closed (M3): a NaN/infinite position or frame size must never read as clear sky.
+  if (!Number.isFinite(bottom) || !Number.isFinite(span) || !Number.isFinite(az)) return false;
   const blocked = (a: number) => {
     const h = heightAt(p, a, treesBare);
     return !Number.isFinite(h) || bottom < h + clearanceDeg;
