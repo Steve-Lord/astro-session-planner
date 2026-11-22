@@ -48,6 +48,12 @@ describe('regression: London, Bortle 6, S50 Pro, 2026-11-22, dual-band', () => {
     expect(ids).toContain('NGC0281')
     expect(ids).toContain('IC1805')
   })
+  it('NGC 7000, NGC 281 and IC 1805 each rank in the top 40 (ruling R13)', () => {
+    const top = entryIds(plan).slice(0, 40)
+    expect(top).toContain('NGC7000')
+    expect(top).toContain('NGC0281')
+    expect(top).toContain('IC1805')
+  })
   it('NGC 7000 is a mosaic', () => {
     expect(plan.entries.find((e) => e.target.id === 'NGC7000')!.fit.label).toBe('mosaic')
   })

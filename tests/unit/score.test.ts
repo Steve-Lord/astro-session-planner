@@ -43,11 +43,12 @@ describe('scoreEntry', () => {
     expect(scoreEntry(base({ fit: { label: 'tight', fill: 0.9, panels: null } }), s, 0).breakdown.fit).toBe(0.9)
     expect(scoreEntry(base({ fit: { label: 'size-unknown', fill: null, panels: null } }), s, 0).breakdown.fit).toBe(0.8)
   })
-  it('contrast factor is clamped to [0.1, 1] and 1 when null', () => {
+  it('contrast factor is clamped to [0.1, 1] and WEIGHTS.unknownContrast (0.3) when null', () => {
     expect(scoreEntry(base({ contrastMag: 2.5 }), s, 0).breakdown.contrast).toBeCloseTo(0.5, 9)
     expect(scoreEntry(base({ contrastMag: 4.9 }), s, 0).breakdown.contrast).toBeCloseTo(0.1, 9)
     expect(scoreEntry(base({ contrastMag: -3 }), s, 0).breakdown.contrast).toBe(1)
-    expect(scoreEntry(base({ contrastMag: null }), s, 0).breakdown.contrast).toBe(1)
+    expect(WEIGHTS.unknownContrast).toBe(0.3)
+    expect(scoreEntry(base({ contrastMag: null }), s, 0).breakdown.contrast).toBe(0.3)
   })
   it('moon factor applies only when the Moon is up in the best window and illum > 0.3', () => {
     expect(scoreEntry(base({ minMoonSepDeg: 35 }), s, 0.8).breakdown.moon).toBeCloseTo(0.5, 9)

@@ -9,6 +9,8 @@ export const WEIGHTS = {
   /** Fit factor per label; mosaic is divided by √(panel count). */
   fit: { good: 1, tight: 0.9, 'size-unknown': 0.8, mosaic: 0.7, 'too-small': 0 } satisfies Record<FitLabel, number>,
   contrastMin: 0.1,
+  /** Contrast factor when surface brightness is unknown: listed, but kept off the top of the shortlist. */
+  unknownContrast: 0.3,
   /** Moon factor = clamp((sep − moonSepZeroDeg) / moonSepSpanDeg, moonMin, 1). */
   moonSepZeroDeg: 10,
   moonSepSpanDeg: 50,
@@ -35,7 +37,7 @@ export function scoreEntry(
   let fit = W.fit[e.fit.label]
   if (e.fit.label === 'mosaic' && e.fit.panels) fit /= Math.sqrt(e.fit.panels[0] * e.fit.panels[1])
   const contrast = e.contrastMag === null
-    ? 1
+    ? W.unknownContrast
     : clamp((s.faintLimitMag - e.contrastMag) / s.faintLimitMag, W.contrastMin, 1)
   const moon = e.minMoonSepDeg !== null && moonIllum > W.moonIllumThreshold
     ? clamp((e.minMoonSepDeg - W.moonSepZeroDeg) / W.moonSepSpanDeg, W.moonMin, 1)
