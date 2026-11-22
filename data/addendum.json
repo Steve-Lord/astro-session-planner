@@ -1,0 +1,38 @@
+{
+  "add": [
+    { "id": "Sh2-101", "names": ["Sh2-101", "Tulip Nebula"], "ra": 300.4375, "dec": 35.2667, "type": "HII",
+      "majArcmin": 20, "minArcmin": 15, "posAngle": null, "mag": null, "surfBr": null, "emission": "emission" },
+    { "id": "Sh2-129", "names": ["Sh2-129", "Flying Bat Nebula"], "ra": 317.75, "dec": 59.95, "type": "HII",
+      "majArcmin": 180, "minArcmin": 120, "posAngle": null, "mag": null, "surfBr": null, "emission": "emission" },
+    { "id": "Sh2-155", "names": ["Sh2-155", "Cave Nebula"], "ra": 344.2, "dec": 62.6167, "type": "HII",
+      "majArcmin": 50, "minArcmin": 30, "posAngle": null, "mag": 7.7, "surfBr": 24.3, "emission": "emission" },
+    { "id": "Sh2-171", "names": ["Sh2-171", "NGC 7822"], "ra": 0.9, "dec": 68.6167, "type": "HII",
+      "majArcmin": 120, "minArcmin": 60, "posAngle": null, "mag": null, "surfBr": null, "emission": "emission" },
+    { "id": "Sh2-240", "names": ["Sh2-240", "Simeis 147", "Spaghetti Nebula"], "ra": 85.0, "dec": 28.0, "type": "SNR",
+      "majArcmin": 180, "minArcmin": 180, "posAngle": null, "mag": null, "surfBr": null, "emission": "emission" },
+    { "id": "Sh2-308", "names": ["Sh2-308", "Thor's Helmet"], "ra": 103.5542, "dec": -23.9, "type": "HII",
+      "majArcmin": 40, "minArcmin": 40, "posAngle": null, "mag": null, "surfBr": null, "emission": "emission" }
+  ],
+  "override": {
+    "NGC7000": { "majArcmin": 120, "minArcmin": 100, "mag": 4.0, "surfBr": 22.8,
+      "_note": "Published size 120x100 arcmin, integrated mag 4.0; surfBr = 4.0 + 2.5 log10(pi/4*120*100*3600) = 22.83" },
+    "IC1805": { "majArcmin": 60, "minArcmin": 60, "mag": 6.5, "surfBr": 24.0,
+      "_note": "Heart Nebula ~60 arcmin, V 6.5 (OpenNGC); same estimate formula = 24.02" },
+    "IC1848": { "majArcmin": 150, "minArcmin": 75, "mag": 6.5, "surfBr": 25.3,
+      "_note": "Soul Nebula ~150x75 arcmin, V 6.5 (OpenNGC); same formula = 25.26" },
+    "NGC0281": { "majArcmin": 35, "minArcmin": 30, "mag": 7.4, "surfBr": 23.6,
+      "_note": "Pacman Nebula ~35x30 arcmin, mag 7.4 (published); same formula = 23.58" },
+    "IC1396": { "majArcmin": 170, "minArcmin": 140, "mag": 3.5, "surfBr": 23.1,
+      "_note": "Elephant Trunk complex ~170x140 arcmin, mag 3.5 (published); same formula = 23.07" },
+    "NGC2237": { "majArcmin": 80, "minArcmin": 60, "mag": 5.5, "surfBr": 23.3,
+      "_note": "Rosette ~80x60 arcmin; integrated mag 5.5 (published figures range 4.8-9; builder's choice); same formula = 23.33" },
+    "IC5070": { "majArcmin": 60, "minArcmin": 50, "mag": 8.0, "surfBr": 25.3,
+      "_note": "Pelican ~60x50 arcmin, mag 8.0 (OpenNGC); same formula = 25.32" }
+  },
+  "complexes": [
+    { "target": { "id": "VeilComplex", "names": ["Veil Complex", "Cygnus Loop", "Veil Nebula"],
+        "ra": 312.75, "dec": 30.7, "type": "SNR", "majArcmin": 180, "minArcmin": 180, "posAngle": null,
+        "mag": 3.0, "surfBr": 22.9, "emission": "emission" },
+      "hides": ["NGC6960", "NGC6992", "NGC6995", "NGC6979", "IC1340"] }
+  ]
+}
