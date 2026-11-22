@@ -17,6 +17,9 @@ const loaded = storage
 export const appState: AppState = $state(loaded.state);
 export const loadError: string | null = loaded.error;
 
+/** Transient cross-screen UI requests (not persisted). */
+export const ui: { editHorizonFor: string | null } = $state({ editHorizonFor: null });
+
 export function persist(): void {
   if (storage) saveState(storage, $state.snapshot(appState) as AppState);
 }

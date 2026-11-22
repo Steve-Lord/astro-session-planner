@@ -22,7 +22,7 @@ export function seededState() {
       },
     ],
     settings: {
-      clearanceDeg: 2, darkSunAlt: -18, faintLimitMag: 5.0,
+      clearanceDeg: 2, darkSunAlt: -18, faintLimitMag: 4.0,
       dualBandGainMag: 2.5, narrowbandGainMag: 3.5, broadbandFilterPenaltyMag: 0.3, tooSmallFill: 0.05,
     },
     selectedSiteId: 'london',

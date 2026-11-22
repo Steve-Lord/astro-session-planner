@@ -1,8 +1,13 @@
 <script lang="ts">
   import { flatProfile, setRange } from '../lib/horizon/profile'
+  import { appState } from '../lib/store/state.svelte'
   import type { HorizonProfile, Site } from '../lib/types'
 
-  let { site, onclose }: { site: Site; onclose: () => void } = $props()
+  // `dirty` is bindable so the parent can confirm before switching to another site's editor (I3).
+  let { site, onclose, dirty = $bindable(false) }: { site: Site; onclose: () => void; dirty?: boolean } = $props()
+
+  const BACKUP_HINT = 'backup-after-horizon'
+  const backupHint = $derived(!appState.dismissed.includes(BACKUP_HINT))
 
   // Plot geometry (viewBox units): 2 units per degree on both axes.
   const X0 = 30
@@ -21,6 +26,25 @@
   // svelte-ignore state_referenced_locally
   let profile = $state.raw<HorizonProfile>(site.horizon ? structuredClone($state.snapshot(site.horizon)) : flatProfile())
   let saved = $state(false)
+
+  // Warn on reload/close while edits are unsaved.
+  $effect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  })
+
+  function edited(): void {
+    saved = false
+    dirty = true
+  }
+
+  function close(): void {
+    if (dirty && !confirm('Discard unsaved horizon changes?')) return
+    dirty = false
+    onclose()
+  }
   let svg: SVGSVGElement
   let dragging: number | null = null
   let grabOffset = 0 // handle altitude minus pointer altitude at pointer-down
@@ -34,7 +58,7 @@
 
   function setPoint(p: number, alt: number): void {
     profile = setRange(profile, p - 5, p + 4, clamp(Math.round(alt)))
-    saved = false
+    edited()
   }
 
   function onKey(e: KeyboardEvent, p: number): void {
@@ -113,17 +137,22 @@
       leafOffAltitudes[i] = on ? alt : 0
     }
     profile = { ...profile, seasonal, leafOffAltitudes }
-    saved = false
+    edited()
   }
 
   function resetFlat(): void {
     profile = flatProfile()
-    saved = false
+    edited()
   }
 
   function save(): void {
     site.horizon = { ...structuredClone($state.snapshot(profile)), source: 'manual', createdAt: new Date().toISOString() }
     saved = true
+    dirty = false
+  }
+
+  function dismissBackupHint(): void {
+    if (!appState.dismissed.includes(BACKUP_HINT)) appState.dismissed.push(BACKUP_HINT)
   }
 </script>
 
@@ -185,9 +214,16 @@
   <div class="actions">
     <button type="button" onclick={save}>Save horizon</button>
     <button type="button" onclick={resetFlat}>Reset flat</button>
-    <button type="button" onclick={onclose}>Close</button>
+    <button type="button" onclick={close}>Close</button>
     {#if saved}<span class="hint" role="status">Saved.</span>{/if}
+    {#if dirty}<span class="hint">Unsaved changes</span>{/if}
   </div>
+  {#if saved && backupHint}
+    <div class="banner info backup" role="status">
+      <span>Horizon saved in this browser only. <a href="#settings">Back up your settings</a> to keep a copy.</span>
+      <button type="button" aria-label="Dismiss backup reminder" onclick={dismissBackupHint}>✕</button>
+    </div>
+  {/if}
 </section>
 
 <style>

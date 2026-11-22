@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { appState, loadError } from '../lib/store/state.svelte'
+  import { appState, loadError, ui } from '../lib/store/state.svelte'
+  import { currentPlatform, needsInstallHint } from '../lib/platform'
   import { loadCatalog } from '../lib/catalog/load'
   import { planNightAsync } from '../lib/plan/planAsync'
   import { formatLocal, tonight } from '../lib/astro/time'
@@ -15,6 +16,8 @@
   const gear: Gear | undefined = $derived(appState.gear.find((g) => g.id === appState.selectedGearId))
 
   let date = $state<string>('')
+  // M5: true once the date came from ?date= or the user; otherwise "tonight" follows the clock.
+  let datePicked = false
   let catalog = $state.raw<Target[] | null>(null)
   let plan = $state.raw<NightPlan | null>(null)
   let planning = $state(false)
@@ -34,12 +37,32 @@
   $effect(() => {
     if (date || !site) return
     const q = new URLSearchParams(location.search).get('date')
+    datePicked = !!(q && DATE_RE.test(q))
     date = q && DATE_RE.test(q) ? q : tonight(site.timezone)
+  })
+
+  // M5: a PWA resumed the next day should plan the new "tonight" unless the user chose a date.
+  onMount(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || datePicked || !site) return
+      const t = tonight(site.timezone)
+      if (t !== date) date = t
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   })
 
   function shift(days: number): void {
     const [y, m, d] = date.split('-').map(Number)
+    datePicked = true
     date = new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+  }
+
+  // I4: iOS Safari tabs can lose storage after 7 days unvisited; suggest installing (once).
+  const IOS_HINT = 'ios-install'
+  const iosHint = needsInstallHint(currentPlatform())
+  function dismissIosHint(): void {
+    if (!appState.dismissed.includes(IOS_HINT)) appState.dismissed.push(IOS_HINT)
   }
 
   $effect(() => {
@@ -77,8 +100,9 @@
   const summary = $derived.by(() => {
     if (!plan || !site) return ''
     const tz = site.timezone
+    const label = plan.darkSunAltUsed === -12 ? 'Nautical dark' : 'Dark'
     const dark = plan.darkWindow
-      ? `Dark ${formatLocal(plan.darkWindow.start, tz)}–${formatLocal(plan.darkWindow.end, tz)}`
+      ? `${label} ${formatLocal(plan.darkWindow.start, tz)}–${formatLocal(plan.darkWindow.end, tz)}`
       : 'No dark window'
     const m = plan.moon
     const parts: string[] = []
@@ -104,9 +128,22 @@
     </div>
   {/if}
 
+  {#if iosHint && appState.sites.length > 0 && !appState.dismissed.includes(IOS_HINT)}
+    <div class="banner info" role="status">
+      <span>Add to Home Screen to keep your sites — and export a backup in <a href="#settings">Settings</a>.</span>
+      <button type="button" aria-label="Dismiss install hint" onclick={dismissIosHint}>✕</button>
+    </div>
+  {/if}
+
   {#if !site}
     <p>No site yet. <a href="#sites">Add a site</a> to see tonight's targets.</p>
   {:else}
+    {#if site.horizon === null}
+      <div class="banner warn" role="status">
+        <span>No horizon set for this site — obstructions are ignored.
+          <a href="#sites" onclick={() => (ui.editHorizonFor = site.id)}>Set the horizon</a></span>
+      </div>
+    {/if}
     <section class="controls" aria-label="Plan settings">
       <label>Site
         <select bind:value={appState.selectedSiteId}>
@@ -125,7 +162,7 @@
       </label>
       <div class="datebar">
         <button type="button" aria-label="Previous day" onclick={() => shift(-1)}>◀</button>
-        <input type="date" aria-label="Date" bind:value={date} />
+        <input type="date" aria-label="Date" bind:value={date} oninput={() => (datePicked = true)} />
         <button type="button" aria-label="Next day" onclick={() => shift(1)}>▶</button>
         <span class="datelabel">{dateLabel}</span>
       </div>
@@ -135,7 +172,9 @@
       <p class="status" role="status">Planning…</p>
     {:else if plan}
       <p class="summary">{summary}</p>
-      {#if plan.noAstroDark}
+      {#if !plan.darkWindow}
+        <div class="banner warn" role="status">No usable darkness tonight (Sun never below −12°).</div>
+      {:else if plan.noAstroDark}
         <div class="banner warn" role="status">No astronomical darkness tonight — using nautical twilight (Sun below −12°).</div>
       {/if}
       {#if plan.entries.length === 0}

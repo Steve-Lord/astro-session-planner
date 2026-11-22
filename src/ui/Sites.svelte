@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { appState } from '../lib/store/state.svelte'
+  import { appState, ui } from '../lib/store/state.svelte'
+  import { requestPersistentStorage } from '../lib/platform'
   import type { Site } from '../lib/types'
   import HorizonEditor from './HorizonEditor.svelte'
 
@@ -8,6 +9,7 @@
 
   let editing = $state<string | null>(null) // site id, 'new', or null
   let horizonSiteId = $state<string | null>(null)
+  let horizonDirty = $state(false)
   let error = $state<string | null>(null)
   let geoMsg = $state<string | null>(null)
 
@@ -24,7 +26,29 @@
   const zones = $derived(baseZones.includes(timezone) ? baseZones : [timezone, ...baseZones])
   const horizonSite = $derived(appState.sites.find((s) => s.id === horizonSiteId))
 
+  /** I3: confirm before discarding unsaved horizon edits. True when it is fine to leave the editor. */
+  function leaveHorizon(): boolean {
+    if (horizonSiteId !== null && horizonDirty && !confirm('Discard unsaved horizon changes?')) return false
+    horizonDirty = false
+    return true
+  }
+
+  function openHorizon(id: string): void {
+    if (id === horizonSiteId || !leaveHorizon()) return
+    editing = null
+    horizonSiteId = id
+  }
+
+  // I1: Tonight's "no horizon" banner asks for a site's horizon editor.
+  $effect(() => {
+    const id = ui.editHorizonFor
+    if (id === null) return
+    ui.editHorizonFor = null
+    if (appState.sites.some((s) => s.id === id)) openHorizon(id)
+  })
+
   function openForm(site: Site | null): void {
+    if (!leaveHorizon()) return
     error = null
     geoMsg = null
     horizonSiteId = null
@@ -70,6 +94,7 @@
     const fields = { name: name.trim(), lat: la, lon: lo, elevation: el, timezone, sky, treesBare }
 
     if (editing === 'new') {
+      requestPersistentStorage() // I4: ask the browser not to evict this origin's storage
       appState.sites.push({
         id: crypto.randomUUID(), ...fields, horizon: null,
         isDefault: isDefault || appState.sites.length === 0,
@@ -89,8 +114,9 @@
   function remove(id: string): void {
     const i = appState.sites.findIndex((s) => s.id === id)
     if (i < 0) return
+    if (!confirm(`Delete site "${appState.sites[i].name}"? Its horizon will be lost.`)) return
     appState.sites.splice(i, 1)
-    if (horizonSiteId === id) horizonSiteId = null
+    if (horizonSiteId === id) { horizonSiteId = null; horizonDirty = false }
     if (editing === id) editing = null
     if (appState.sites.length > 0 && !appState.sites.some((s) => s.isDefault)) appState.sites[0].isDefault = true
     ensureSelection()
@@ -135,7 +161,7 @@
         <div class="meta">{s.lat.toFixed(4)}°, {s.lon.toFixed(4)}° · {s.timezone}</div>
         <div class="actions">
           <button type="button" onclick={() => openForm(s)}>Edit</button>
-          <button type="button" onclick={() => { editing = null; horizonSiteId = s.id }}>Edit horizon</button>
+          <button type="button" onclick={() => openHorizon(s.id)}>Edit horizon</button>
           <button type="button" onclick={() => remove(s.id)}>Delete</button>
         </div>
       </li>
@@ -181,7 +207,7 @@
 
   {#if horizonSite}
     {#key horizonSite.id}
-      <HorizonEditor site={horizonSite} onclose={() => (horizonSiteId = null)} />
+      <HorizonEditor site={horizonSite} bind:dirty={horizonDirty} onclose={() => (horizonSiteId = null)} />
     {/key}
   {/if}
 </main>

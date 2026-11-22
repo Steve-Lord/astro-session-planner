@@ -34,13 +34,13 @@
     <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
   {/each}
 </nav>
-<!-- Tonight stays mounted (hidden) so its date and loaded catalog survive tab switches. -->
+<!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
+     survive tab switches. -->
 <div hidden={tab !== 'tonight'}><Tonight /></div>
-{#if tab === 'sites'}
-  <Sites />
-{:else if tab === 'gear'}
+<div hidden={tab !== 'sites'}><Sites /></div>
+{#if tab === 'gear'}
   <GearView />
-{:else}
+{:else if tab === 'settings'}
   <Settings />
 {/if}
 

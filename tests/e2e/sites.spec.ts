@@ -65,6 +65,11 @@ test.describe('Sites, horizon, settings', () => {
     }
     await page.getByRole('button', { name: 'Save horizon' }).click()
     await expect.poll(async () => (await stored(page)).sites[0].horizon?.altitudes[180]).toBe(30)
+    // I4: gentle backup prompt after saving a horizon, dismissible and remembered.
+    await expect(page.getByRole('link', { name: 'Back up your settings' })).toHaveAttribute('href', '#settings')
+    await page.getByRole('button', { name: 'Dismiss backup reminder' }).click()
+    await expect(page.getByRole('link', { name: 'Back up your settings' })).toHaveCount(0)
+    await expect.poll(async () => (await stored(page)).dismissed).toContain('backup-after-horizon')
     const h = (await stored(page)).sites[0].horizon
     expect(h.source).toBe('manual')
     expect(h.altitudes[175]).toBe(30)
@@ -102,8 +107,11 @@ test.describe('Sites, horizon, settings', () => {
     await dl.saveAs(file)
 
     await page.getByRole('link', { name: 'Sites' }).click()
+    let message = ''
+    page.once('dialog', (d) => { message = d.message(); void d.accept() })
     await page.getByRole('button', { name: 'Delete' }).click()
     await expect(page.getByText('London')).toHaveCount(0)
+    expect(message).toContain('London')
 
     await page.getByRole('link', { name: 'Settings' }).click()
     await page.getByLabel('Import backup').setInputFiles(file)
@@ -130,11 +138,16 @@ test.describe('Sites, horizon, settings', () => {
     await page.getByLabel('Major axis (arcmin)').fill('10')
     await page.getByLabel('Minor axis (arcmin)').fill('10')
     await page.getByLabel('Type').selectOption('EmN')
+    await page.getByLabel('Magnitude (optional)').fill('8')
     await page.getByRole('button', { name: 'Add target' }).click()
     await expect(page.getByRole('listitem').filter({ hasText: 'Zed Test Nebula' })).toBeVisible()
     await page.getByRole('link', { name: 'Tonight' }).click()
     await page.getByLabel('Date').fill('2026-12-21')
-    await expect(page.locator('ol.entries > li').filter({ hasText: 'Zed Test Nebula' })).toBeVisible({ timeout: 60_000 })
+    const row = page.locator('ol.entries > li').filter({ hasText: 'Zed Test Nebula' })
+    await expect(row).toBeVisible({ timeout: 60_000 })
+    // I2: magnitude + size give it a surface brightness, so its contrast is known.
+    await row.getByRole('button', { name: 'why' }).click()
+    await expect(row.locator('dd').nth(3)).toContainText('than sky')
   })
 
   test('settings edit persists and reset restores defaults', async ({ page }) => {
@@ -199,5 +212,49 @@ test.describe('Sites, horizon, settings', () => {
     await page.getByRole('link', { name: 'Settings' }).click()
     await page.getByRole('link', { name: 'Tonight' }).click()
     await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+  })
+
+  test('deleting a site asks for confirmation; dismissing keeps it (D2)', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/#sites')
+    let message = ''
+    page.once('dialog', (d) => { message = d.message(); void d.dismiss() })
+    await page.getByRole('button', { name: 'Delete' }).click()
+    expect(message).toBe('Delete site "London"? Its horizon will be lost.')
+    await expect(page.getByRole('listitem').filter({ hasText: 'London' })).toBeVisible()
+    expect((await stored(page)).sites).toHaveLength(1)
+  })
+
+  test('closing the horizon editor with unsaved edits asks first (I3)', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/#sites')
+    await page.getByRole('button', { name: 'Edit horizon' }).click()
+    const editor = page.getByRole('region', { name: 'Horizon for London' })
+    // Clean editor closes without a prompt.
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(editor).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Edit horizon' }).click()
+    const p0 = page.getByRole('slider', { name: 'Azimuth 0°' })
+    await p0.focus()
+    await p0.press('PageUp')
+    await expect(p0).toHaveAttribute('aria-valuenow', '10')
+
+    // Edits survive a tab switch (Sites stays mounted).
+    await page.getByRole('link', { name: 'Tonight' }).click()
+    await page.getByRole('link', { name: 'Sites' }).click()
+    await expect(p0).toHaveAttribute('aria-valuenow', '10')
+
+    let message = ''
+    page.once('dialog', (d) => { message = d.message(); void d.dismiss() })
+    await page.getByRole('button', { name: 'Close' }).click()
+    expect(message).toBe('Discard unsaved horizon changes?')
+    await expect(editor).toBeVisible()
+    await expect(p0).toHaveAttribute('aria-valuenow', '10')
+
+    page.once('dialog', (d) => void d.accept())
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(editor).toHaveCount(0)
+    expect((await stored(page)).sites[0].horizon).toBeNull()
   })
 })

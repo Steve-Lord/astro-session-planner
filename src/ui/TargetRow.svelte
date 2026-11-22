@@ -1,12 +1,13 @@
 <script lang="ts">
   import type { PlanEntry } from '../lib/types'
   import { formatLocal } from '../lib/astro/time'
+  import { commonName } from '../lib/catalog/names'
 
   let { entry, rank, timezone }: { entry: PlanEntry; rank: number; timezone: string } = $props()
   let why = $state(false)
 
   const t = $derived(entry.target)
-  const common = $derived(t.names.slice(1).find((n) => !/^(NGC|IC|M|Sh2|\d)/.test(n)))
+  const common = $derived(commonName(t.names))
   const fitText = $derived.by(() => {
     const f = entry.fit
     if (f.label === 'good' || f.label === 'tight') return `fills ${Math.round((f.fill ?? 0) * 100)}%`
@@ -15,7 +16,22 @@
     return ''
   })
   const range = $derived(`${formatLocal(entry.best.start, timezone)}–${formatLocal(entry.best.end, timezone)}`)
-  const factors = $derived(Object.entries(entry.breakdown) as [string, number][])
+  const LABELS: Record<keyof PlanEntry['breakdown'], string> = {
+    hours: 'Hours', altitude: 'Altitude', fit: 'Fit', contrast: 'Contrast', moon: 'Moon',
+  }
+  // M2: labelled factors with the values behind contrast and Moon.
+  const factors = $derived.by(() => {
+    const b = entry.breakdown
+    const c = entry.contrastMag
+    const sep = entry.minMoonSepDeg
+    return [
+      ['hours', `${b.hours.toFixed(2)} (${entry.totalHours.toFixed(1)} h usable)`],
+      ['altitude', `${b.altitude.toFixed(2)} (peak ${Math.round(entry.peakAlt)}°)`],
+      ['fit', `${b.fit.toFixed(2)} (${entry.fit.label})`],
+      ['contrast', c === null ? `${b.contrast.toFixed(2)} (unknown brightness)` : `${b.contrast.toFixed(2)} (${Math.abs(c).toFixed(1)} mag ${c >= 0 ? 'fainter' : 'brighter'} than sky)`],
+      ['moon', `${b.moon.toFixed(2)} (${sep === null ? 'Moon down' : `closest ${Math.round(sep)}°`})`],
+    ] as [keyof PlanEntry['breakdown'], string][]
+  })
 </script>
 
 <li class="row">
@@ -30,7 +46,7 @@
     {#if why}
       <dl class="factors">
         {#each factors as [k, v] (k)}
-          <dt>{k}</dt><dd>{v.toFixed(2)}</dd>
+          <dt>{LABELS[k]}</dt><dd>{v}</dd>
         {/each}
       </dl>
     {/if}
