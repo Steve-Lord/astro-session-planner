@@ -58,6 +58,17 @@ function checkHorizon(h: unknown, path: string): void {
     if (!Array.isArray(a) || a.length !== 360) throw new Error(`${path}.${k} must have 360 entries`);
     if (!a.every(ok)) throw new Error(`${path}.${k} has invalid entries`);
   }
+  if (h.calibration === undefined) h.calibration = null;
+  else if (h.calibration !== null) {
+    const c = h.calibration;
+    if (!isObj(c) || typeof c.target !== 'string' || typeof c.at !== 'string' || typeof c.residualAltDeg !== 'number' || !Number.isFinite(c.residualAltDeg)) {
+      throw new Error(`${path}.calibration must be null or { target, at, residualAltDeg }`);
+    }
+  }
+  if (h.unswept !== undefined) {
+    if (!Array.isArray(h.unswept) || h.unswept.length !== 360) throw new Error(`${path}.unswept must have 360 entries`);
+    if (!h.unswept.every((v) => typeof v === 'boolean')) throw new Error(`${path}.unswept has invalid entries`);
+  }
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
