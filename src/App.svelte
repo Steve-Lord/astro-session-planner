@@ -5,6 +5,7 @@
   import Sites from './ui/Sites.svelte'
   import GearView from './ui/GearView.svelte'
   import Settings from './ui/Settings.svelte'
+  import SensorProbe from './ui/SensorProbe.svelte'
 
   const TABS = [
     { id: 'tonight', label: 'Tonight' },
@@ -16,10 +17,16 @@
 
   const fromHash = (): Tab => TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight'
   let tab = $state<Tab>(fromHash())
+  // Hidden debug screen (not in the tab bar) for checking device-orientation behaviour on a phone.
+  const isProbe = () => location.hash === '#sensor-probe'
+  let probe = $state(isProbe())
 
   onMount(() => {
     const stop = startAutoSave()
-    const onHash = () => (tab = fromHash())
+    const onHash = () => {
+      tab = fromHash()
+      probe = isProbe()
+    }
     window.addEventListener('hashchange', onHash)
     return () => {
       window.removeEventListener('hashchange', onHash)
@@ -29,16 +36,20 @@
 </script>
 
 <h1 class="app-title">Astro Session Planner</h1>
-<nav class="tabs" aria-label="Main">
-  {#each TABS as t (t.id)}
-    <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
-  {/each}
-</nav>
+{#if !probe}
+  <nav class="tabs" aria-label="Main">
+    {#each TABS as t (t.id)}
+      <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
+    {/each}
+  </nav>
+{/if}
 <!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
      survive tab switches. -->
-<div hidden={tab !== 'tonight'}><Tonight /></div>
-<div hidden={tab !== 'sites'}><Sites /></div>
-{#if tab === 'gear'}
+<div hidden={probe || tab !== 'tonight'}><Tonight /></div>
+<div hidden={probe || tab !== 'sites'}><Sites /></div>
+{#if probe}
+  <SensorProbe />
+{:else if tab === 'gear'}
   <GearView />
 {:else if tab === 'settings'}
   <Settings />

@@ -31,3 +31,11 @@ test('works offline after the first load (M8)', async ({ page, context }) => {
   await expect(page.locator('ol.entries > li').first()).toBeVisible({ timeout: 60_000 })
   await context.setOffline(false)
 })
+
+test('hidden #sensor-probe screen renders Start and Back', async ({ page }) => {
+  await page.goto('/#sensor-probe')
+  await expect(page.getByRole('heading', { name: 'Astro Session Planner' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Back' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeHidden()
+})
