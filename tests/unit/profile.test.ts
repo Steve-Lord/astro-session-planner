@@ -92,6 +92,13 @@ describe('frameClears', () => {
   it('detects the wall only via the wrap across 0 (az 359)', () => {
     expect(frameClears(wall, false, 33, 359, 1.4, 2)).toBe(false);
   });
+  it('clears across the wrap when the wall starts just past 0 (needs working wrap)', () => {
+    const east = setRange(flatProfile(), 1, 5, 30);
+    // the sample at az 359.5 interpolates idx 359 and idx 0 (wrap) -> 0; wall (30+2) is below frame bottom 32.6
+    expect(frameClears(east, false, 34, 359.5, 1.4, 2)).toBe(true);
+    // and the same frame at az 359 (samples 360.67 -> interp idx 0/1 ~ 20) also clears
+    expect(frameClears(east, false, 33, 359, 1.4, 2)).toBe(true);
+  });
   it('detects the wall via negative sample azimuths (az 1)', () => {
     expect(frameClears(wall, false, 33, 1, 1.4, 2)).toBe(false);
   });
