@@ -6,7 +6,7 @@ export interface Addendum {
   complexes: { target: Target; hides: string[] }[];
 }
 
-const EMISSION: Record<string, EmissionClass> = {
+export const EMISSION: Record<string, EmissionClass> = {
   HII: 'emission', EmN: 'emission', SNR: 'emission', PN: 'emission', 'Cl+N': 'emission',
   RfN: 'broadband', G: 'broadband', GPair: 'broadband', GTrpl: 'broadband', GGroup: 'broadband',
   OCl: 'broadband', GCl: 'broadband',
