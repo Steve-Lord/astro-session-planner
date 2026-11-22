@@ -10,7 +10,9 @@ export default defineConfig({
     svelte(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'catalog.json'],
+      // globPatterns already precache every public asset (catalog, icons, favicon); listing them again
+      // via includeAssets / manifest icons only duplicated precache entries (M7).
+      includeManifestIcons: false,
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,json,png}'],
