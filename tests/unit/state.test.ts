@@ -131,3 +131,37 @@ describe('hardening', () => {
     expect(st.getItem('asp:v1')).toBe('garbage');
   });
 });
+
+describe('site normalisation on import', () => {
+  const backup = (siteOverride: Record<string, unknown>, drop: string[] = []) => {
+    const s: Record<string, unknown> = { ...site, ...siteOverride };
+    for (const k of drop) delete s[k];
+    return JSON.stringify({ ...defaultState(), sites: [s] });
+  };
+  const horizon = (over: Record<string, unknown> = {}) => ({
+    altitudes: new Array(360).fill(0), seasonal: new Array(360).fill(false), leafOffAltitudes: new Array(360).fill(0),
+    northOffsetDeg: 0, createdAt: 'x', source: 'manual', ...over,
+  });
+
+  it('defaults missing sky, treesBare, isDefault and elevation', () => {
+    const out = importState(backup({}, ['sky', 'treesBare', 'isDefault', 'elevation'])).sites[0];
+    expect(out.sky).toEqual({});
+    expect(out.treesBare).toBe(false);
+    expect(out.isDefault).toBe(false);
+    expect(out.elevation).toBe(0);
+  });
+  it('rejects a non-object sky', () => {
+    expect(() => importState(backup({ sky: 5 }))).toThrow('sites[0].sky must be an object');
+  });
+  it('treats undefined horizon as null and accepts a valid one', () => {
+    expect(importState(backup({}, ['horizon'])).sites[0].horizon).toBeNull();
+    expect(importState(backup({ horizon: horizon() })).sites[0].horizon?.altitudes).toHaveLength(360);
+  });
+  it('rejects malformed horizons naming the field', () => {
+    expect(() => importState(backup({ horizon: 3 }))).toThrow('sites[0].horizon must be null or an object');
+    expect(() => importState(backup({ horizon: horizon({ altitudes: [1, 2] }) }))).toThrow('sites[0].horizon.altitudes must have 360 entries');
+    expect(() => importState(backup({ horizon: horizon({ seasonal: new Array(360).fill(1) }) }))).toThrow('sites[0].horizon.seasonal');
+    const bad = new Array(360).fill(0); bad[7] = 'x';
+    expect(() => importState(backup({ horizon: horizon({ leafOffAltitudes: bad }) }))).toThrow('sites[0].horizon.leafOffAltitudes');
+  });
+});

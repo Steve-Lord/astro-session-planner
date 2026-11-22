@@ -43,6 +43,20 @@ function mergeSettings(raw: Record<string, unknown>): Settings {
   return out as unknown as Settings;
 }
 
+function checkHorizon(h: unknown, path: string): void {
+  if (!isObj(h)) throw new Error(`${path} must be null or an object`);
+  const arrays: [string, (v: unknown) => boolean][] = [
+    ['altitudes', (v) => typeof v === 'number' && Number.isFinite(v)],
+    ['seasonal', (v) => typeof v === 'boolean'],
+    ['leafOffAltitudes', (v) => typeof v === 'number' && Number.isFinite(v)],
+  ];
+  for (const [k, ok] of arrays) {
+    const a = h[k];
+    if (!Array.isArray(a) || a.length !== 360) throw new Error(`${path}.${k} must have 360 entries`);
+    if (!a.every(ok)) throw new Error(`${path}.${k} has invalid entries`);
+  }
+}
+
 /** Validate untrusted data and normalise it into an AppState; throws Error naming the first problem. */
 function parseState(raw: unknown): AppState {
   if (!isObj(raw)) throw new Error('Backup data must be an object');
@@ -60,6 +74,13 @@ function parseState(raw: unknown): AppState {
     if (typeof s.lat !== 'number' || !Number.isFinite(s.lat)) throw new Error(`sites[${i}].lat must be a number`);
     if (typeof s.lon !== 'number' || !Number.isFinite(s.lon)) throw new Error(`sites[${i}].lon must be a number`);
     if (typeof s.timezone !== 'string') throw new Error(`sites[${i}].timezone must be a string`);
+    if (s.sky === undefined) s.sky = {};
+    else if (!isObj(s.sky)) throw new Error(`sites[${i}].sky must be an object`);
+    if (typeof s.elevation !== 'number' || !Number.isFinite(s.elevation)) s.elevation = 0;
+    if (typeof s.treesBare !== 'boolean') s.treesBare = false;
+    if (typeof s.isDefault !== 'boolean') s.isDefault = false;
+    if (s.horizon === undefined) s.horizon = null;
+    else if (s.horizon !== null) checkHorizon(s.horizon, `sites[${i}].horizon`);
   });
   (raw.gear as unknown[]).forEach((g, i) => {
     if (!isObj(g)) throw new Error(`gear[${i}] must be an object`);

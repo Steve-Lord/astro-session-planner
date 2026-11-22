@@ -149,7 +149,7 @@ test.describe('Sites, horizon, settings', () => {
   test('gear card shows the Seestar field of view', async ({ page }) => {
     await seedStorage(page)
     await page.goto('/#gear')
-    await expect(page.getByText('Seestar S50 Pro')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Seestar S50 Pro' })).toBeVisible()
     await expect(page.getByText(/147′ × 83′/)).toBeVisible()
   })
 
@@ -166,5 +166,38 @@ test.describe('Sites, horizon, settings', () => {
     await page.goto('/#sites')
     await page.getByRole('button', { name: 'Add site' }).click()
     await expect(page.getByRole('link', { name: /lightpollutionmap/i })).toHaveAttribute('href', 'https://www.lightpollutionmap.info')
+  })
+
+  test('dragging a control point raises it; a plain click does not move it', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/#sites')
+    await page.getByRole('button', { name: 'Edit horizon' }).click()
+    const handle = page.getByRole('slider', { name: 'Azimuth 90°' })
+    const box = (await handle.boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    // Plain click off-centre: value unchanged.
+    await page.mouse.click(x + 2, y - 3)
+    await expect(handle).toHaveAttribute('aria-valuenow', '0')
+    // Drag up by 40 screen px.
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x, y - 20, { steps: 4 })
+    await page.mouse.move(x, y - 40, { steps: 4 })
+    await page.mouse.up()
+    const now = Number(await handle.getAttribute('aria-valuenow'))
+    expect(now).toBeGreaterThan(5)
+    await page.getByRole('button', { name: 'Save horizon' }).click()
+    await expect.poll(async () => (await stored(page)).sites[0].horizon?.altitudes[90]).toBe(now)
+  })
+
+  test('Tonight keeps its date across tab switches', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22')
+    await page.getByRole('button', { name: 'Next day' }).click()
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await page.getByRole('link', { name: 'Tonight' }).click()
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
   })
 })

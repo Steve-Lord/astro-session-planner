@@ -34,9 +34,9 @@
     <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
   {/each}
 </nav>
-{#if tab === 'tonight'}
-  <Tonight />
-{:else if tab === 'sites'}
+<!-- Tonight stays mounted (hidden) so its date and loaded catalog survive tab switches. -->
+<div hidden={tab !== 'tonight'}><Tonight /></div>
+{#if tab === 'sites'}
   <Sites />
 {:else if tab === 'gear'}
   <GearView />

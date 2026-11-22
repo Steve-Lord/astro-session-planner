@@ -23,6 +23,7 @@
   let saved = $state(false)
   let svg: SVGSVGElement
   let dragging: number | null = null
+  let grabOffset = 0 // handle altitude minus pointer altitude at pointer-down
 
   let fromAz = $state('0')
   let toAz = $state('0')
@@ -55,10 +56,10 @@
     dragging = p
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     ;(e.currentTarget as SVGElement).focus()
-    setPoint(p, altFromPointer(e))
+    grabOffset = profile.altitudes[p] - altFromPointer(e)
   }
   function onMove(e: PointerEvent, p: number): void {
-    if (dragging === p) setPoint(p, altFromPointer(e))
+    if (dragging === p) setPoint(p, altFromPointer(e) + grabOffset)
   }
   function onUp(): void {
     dragging = null
