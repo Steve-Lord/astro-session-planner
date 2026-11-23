@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defaultState, loadState, saveState, exportState, importState } from '../../src/lib/store/state';
+import { withMount } from '../../src/lib/gear/fit';
 import { SEESTAR_S50_PRO } from '../../src/lib/gear/fit';
 import { DEFAULT_SETTINGS } from '../../src/lib/sky/brightness';
 import type { Site } from '../../src/lib/types';
@@ -42,6 +43,16 @@ describe('load/save', () => {
     const r = loadState(st);
     expect(r.error).toBeNull();
     expect(r.state).toEqual(s);
+  });
+  it('keeps an equatorial mount through save and load', () => {
+    const st = new MemStorage();
+    const d = defaultState();
+    const s = { ...d, gear: [withMount(d.gear[0], 'eq'), ...d.gear.slice(1)] };
+    saveState(st, s);
+    const r = loadState(st);
+    expect(r.error).toBeNull();
+    expect(r.state.gear[0].mount).toBe('eq');
+    expect(r.state.gear[0].maxAltDeg).toBe(90);
   });
   it('garbage gives defaults, error, and a corrupt backup', () => {
     const st = new MemStorage();
