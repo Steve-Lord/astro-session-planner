@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { seedStorage } from './seed'
 import { aim, stubSensors, trackStates } from './sensors-stub'
+import { calibrationCandidates } from '../../src/lib/sweep/calibration'
+import { declination } from '../../src/lib/sweep/geomag'
 
 const TEST_NOW = Date.UTC(2026, 5, 15, 22, 0, 0)
 const stored = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('asp:v1') ?? 'null'))
@@ -227,5 +229,121 @@ test.describe('Phone horizon sweep', () => {
     await expect(sweep).toHaveCount(0)
     expect(await trackStates(page)).toEqual(['ended', 'ended'])
     await released()
+  })
+
+  test.describe('North calibration', () => {
+    const CAL_NOW = Date.UTC(2026, 11, 15, 20, 0, 0)
+    const london = { lat: 51.5, lon: -0.13, elevation: 20 }
+    const DECL = declination(london.lat, london.lon, 0.02, new Date(CAL_NOW))
+    const wrap = (a: number) => ((a % 360) + 360) % 360
+    const target = () => {
+      const list = calibrationCandidates(london as never, new Date(CAL_NOW))
+      return { list, pick: list[0] }
+    }
+
+    /** Sweeps the roof and opens the calibrate overlay from the editor banner. */
+    async function openCalibrate(page: Page) {
+      await seedStorage(page)
+      await stubSensors(page, { testNow: CAL_NOW })
+      await startSweep(page)
+      await aim(page, [...headings(0, 360), 0].map((h) => [h, roof(h)] as [number, number]))
+      await page.getByRole('dialog', { name: 'Horizon sweep' }).getByRole('button', { name: 'Done' }).click()
+      const editor = page.getByRole('region', { name: 'Horizon for London' })
+      await expect(editor.getByText('Calibrate now (recommended) — the compass is only rough near buildings')).toBeVisible()
+      await editor.getByRole('button', { name: 'Calibrate', exact: true }).click()
+      const cal = page.getByRole('dialog', { name: 'Calibrate north' })
+      await expect(cal).toBeVisible()
+      return { editor, cal }
+    }
+
+    async function pick(page: Page, cal: ReturnType<Page['getByRole']>, label: string, alt: number, heading: number) {
+      await cal.getByRole('button', { name: new RegExp(`^${label} —`) }).click()
+      await expect(cal.locator('video')).toBeVisible()
+      await expect(async () => {
+        await aim(page, [[wrap(heading), alt]])
+        await expect(cal.getByText(/^Target is /)).toBeVisible({ timeout: 200 })
+      }).toPass()
+    }
+
+    test('lists never the Sun; Lock + Apply rotates the horizon +10° and clears the badge', async ({ page }) => {
+      const { list, pick: t } = target()
+      expect(list.length).toBeGreaterThan(0)
+      expect(t.alt).toBeGreaterThan(5)
+      const { editor, cal } = await openCalibrate(page)
+      await expect(cal.getByText(/Sun/)).toHaveCount(0)
+      await expect(cal.getByRole('button', { name: new RegExp(`^${t.label} — (low|mid-height|high) in the (N|NE|E|SE|S|SW|W|NW)$`) })).toBeVisible()
+
+      const before100 = Number(await slider(page, 100).getAttribute('aria-valuenow'))
+      const before160 = Number(await slider(page, 160).getAttribute('aria-valuenow'))
+      expect(Math.abs(before100 - 30)).toBeLessThanOrEqual(1)
+      expect(Math.abs(before160 - 2)).toBeLessThanOrEqual(1)
+
+      const reading = t.az - 10 - DECL // compass heading 10° west of truth
+      await pick(page, cal, t.label, t.alt, reading)
+      await expect(cal.getByText(/^Target is 10° right, 0° (up|down)$/)).toBeVisible()
+      await cal.getByRole('button', { name: 'Lock' }).click()
+      await aim(page, Array.from({ length: 15 }, () => [wrap(reading), t.alt] as [number, number]))
+      await expect(cal.getByText('North corrected by +10.0°; altitude reads 0.0° high')).toBeVisible()
+      await cal.getByRole('button', { name: 'Apply' }).click()
+
+      await expect(cal).toHaveCount(0)
+      expect((await trackStates(page)).every((s) => s === 'ended')).toBe(true)
+      await expect(editor.getByText('Uncalibrated — calibrate north for accuracy')).toHaveCount(0)
+      await expect(editor.getByText('Unsaved changes')).toBeVisible()
+      expect(Math.abs(Number(await slider(page, 100).getAttribute('aria-valuenow')) - 2)).toBeLessThanOrEqual(1)
+      expect(Math.abs(Number(await slider(page, 160).getAttribute('aria-valuenow')) - 30)).toBeLessThanOrEqual(1)
+
+      await editor.getByRole('button', { name: 'Save horizon' }).click()
+      const h = (await stored(page)).sites[0].horizon
+      expect(h.calibration.target).toBe(t.label)
+      expect(h.calibration.residualAltDeg).toBeCloseTo(0, 1)
+      expect(h.northOffsetDeg).toBeCloseTo(10, 1)
+      expect(h.source).toBe('sweep')
+    })
+
+    test('unsteady readings disable Apply and ask to try again; too few readings ask to hold steady', async ({ page }) => {
+      const { pick: t } = target()
+      const { cal } = await openCalibrate(page)
+      const reading = t.az - 10 - DECL
+      await pick(page, cal, t.label, t.alt, reading)
+
+      await cal.getByRole('button', { name: 'Lock' }).click()
+      await aim(page, [[wrap(reading), t.alt], [wrap(reading), t.alt]])
+      await expect(cal.getByText('Hold steady on the target and try again.')).toBeVisible()
+
+      await cal.getByRole('button', { name: 'Lock' }).click()
+      await aim(page, Array.from({ length: 16 }, (_, i) => [wrap(reading + (i % 2 ? 6 : -6)), t.alt] as [number, number]))
+      await expect(cal.getByText(/^Readings were unsteady \(±\d+(\.\d)?°\) — try again$/)).toBeVisible()
+      await expect(cal.getByRole('button', { name: 'Apply' })).toBeDisabled()
+      await cal.getByRole('button', { name: 'Try again' }).click()
+      await expect(cal.getByRole('button', { name: 'Lock' })).toBeVisible()
+    })
+
+    test('a big correction warns but still allows Apply', async ({ page }) => {
+      const { pick: t } = target()
+      const { cal } = await openCalibrate(page)
+      const reading = t.az - 60 - DECL
+      await pick(page, cal, t.label, t.alt, reading)
+      await cal.getByRole('button', { name: 'Lock' }).click()
+      await aim(page, Array.from({ length: 12 }, () => [wrap(reading), t.alt] as [number, number]))
+      await expect(cal.getByText(`That's a big correction — check you aimed at ${t.label}`)).toBeVisible()
+      await expect(cal.getByRole('button', { name: 'Apply' })).toBeEnabled()
+    })
+
+    test('leaving the tab pauses calibration and releases the camera; Close releases it too', async ({ page }) => {
+      const { pick: t } = target()
+      const { cal } = await openCalibrate(page)
+      await pick(page, cal, t.label, t.alt, t.az - DECL)
+      await page.evaluate(() => { location.hash = '#tonight' })
+      await expect.poll(() => trackStates(page)).toEqual(['ended', 'ended'])
+      await page.evaluate(() => { location.hash = '#sites' })
+      await expect(cal.getByText('Paused — pick the object again to continue.')).toBeVisible()
+      await pick(page, cal, t.label, t.alt, t.az - DECL)
+      await cal.getByRole('button', { name: 'Back' }).click()
+      await expect(trackStates(page)).resolves.toEqual(['ended', 'ended', 'ended'])
+      await cal.getByRole('button', { name: 'Close' }).click()
+      await expect(cal).toHaveCount(0)
+      expect((await trackStates(page)).every((s) => s === 'ended')).toBe(true)
+    })
   })
 })

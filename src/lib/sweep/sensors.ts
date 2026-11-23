@@ -4,6 +4,13 @@ import { angDiff, cameraDirection, wrap360, type OrientationSample } from './ori
 type IOSOrientationEvent = DeviceOrientationEvent & { webkitCompassHeading?: number; webkitCompassAccuracy?: number }
 type PermissionCtor = { requestPermission?: () => Promise<'granted' | 'denied' | 'default'> }
 
+/** User-facing sensor failures shared by the sweep and calibrate screens. */
+export const SENSOR_MSG = {
+  insecure: 'Sensors need a secure (https) page.',
+  denied: 'Motion access was refused. Close Safari (or the Home Screen app) completely, reopen this page, tap Start and choose Allow.',
+  unsupported: 'This needs a phone or tablet with a compass.',
+}
+
 export function sensorSupport(): { secure: boolean; orientation: boolean; needsPermission: boolean; camera: boolean } {
   const ctor = typeof DeviceOrientationEvent === 'undefined' ? undefined : (DeviceOrientationEvent as unknown as PermissionCtor)
   return {

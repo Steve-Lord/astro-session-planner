@@ -1,13 +1,17 @@
 <script lang="ts">
   import { flatProfile, setRange } from '../lib/horizon/profile'
   import { appState } from '../lib/store/state.svelte'
+  import { rotateProfile } from '../lib/sweep/calibration'
+  import { now, sensorSupport } from '../lib/sweep/sensors'
+  import CalibrateView, { type CalibrationResult } from './CalibrateView.svelte'
   import ShareHorizon from './ShareHorizon.svelte'
   import type { HorizonProfile, Site } from '../lib/types'
 
   // `dirty` is bindable so the parent can confirm before switching to another site's editor (I3).
   // `initial` (a just-finished sweep) replaces the site's horizon as the working copy and starts unsaved.
-  let { site, onclose, dirty = $bindable(false), initial }:
-    { site: Site; onclose: () => void; dirty?: boolean; initial?: HorizonProfile } = $props()
+  // `active` false (another tab) stops a running calibration.
+  let { site, onclose, dirty = $bindable(false), initial, active = true }:
+    { site: Site; onclose: () => void; dirty?: boolean; initial?: HorizonProfile; active?: boolean } = $props()
 
   const BACKUP_HINT = 'backup-after-horizon'
   const backupHint = $derived(!appState.dismissed.includes(BACKUP_HINT))
@@ -37,6 +41,7 @@
   const uid = `hz${Math.random().toString(36).slice(2, 8)}`
   let saved = $state(false)
   let sharing = $state(false)
+  let calibrating = $state(false)
 
   // Warn on reload/close while edits are unsaved.
   $effect(() => {
@@ -46,6 +51,9 @@
     return () => window.removeEventListener('beforeunload', warn)
   })
 
+  const hasSensors = sensorSupport().orientation
+  const canCalibrate = $derived(hasSensors && profile.altitudes.some((a) => a > 0))
+  const suggestCalibrate = $derived(canCalibrate && profile.calibration === null && profile.source === 'sweep')
   const uncalibrated = $derived(profile.calibration === null && (profile.source === 'sweep' || profile.source === 'import'))
 
   /** Contiguous unswept runs as [startAz, endAz], drawn hatched. */
@@ -173,6 +181,15 @@
     edited()
   }
 
+  function applyCalibration(r: CalibrationResult): void {
+    profile = {
+      ...rotateProfile(profile, r.offsetDeg),
+      calibration: { target: r.label, at: now().toISOString(), residualAltDeg: r.residualAltDeg },
+    }
+    calibrating = false
+    edited()
+  }
+
   function save(): void {
     site.horizon = { ...structuredClone($state.snapshot(profile)), source: reshaped ? 'manual' : profile.source, createdAt: new Date().toISOString() }
     saved = true
@@ -187,6 +204,12 @@
 <section class="card" aria-label={`Horizon for ${site.name}`}>
   <h3>Horizon: {site.name}</h3>
   {#if uncalibrated}<span class="badge warn">Uncalibrated — calibrate north for accuracy</span>{/if}
+  {#if suggestCalibrate}
+    <div class="banner warn" role="status">
+      <span>Calibrate now (recommended) — the compass is only rough near buildings</span>
+      <button type="button" onclick={() => (calibrating = true)}>Calibrate</button>
+    </div>
+  {/if}
   <p class="hint">Drag a point up to the height of whatever blocks the sky in that direction, or focus it and use Arrow keys (1°) and Page keys (10°). Each point sets ±5°.</p>
 
   <svg bind:this={svg} viewBox={`0 0 ${VBW} ${VBH}`} role="group" aria-label="Horizon profile, azimuth 0 to 360 degrees" class="plot">
@@ -250,6 +273,7 @@
 
   <div class="actions">
     <button type="button" onclick={save}>Save horizon</button>
+    {#if canCalibrate}<button type="button" onclick={() => (calibrating = true)}>Calibrate north</button>{/if}
     <button type="button" onclick={resetFlat}>Reset flat</button>
     <button type="button" onclick={() => (sharing = !sharing)} disabled={dirty || !site.horizon}>Send to another device</button>
     <button type="button" onclick={close}>Close</button>
@@ -263,6 +287,9 @@
       <span>Horizon saved in this browser only. <a href="#settings">Back up your settings</a> to keep a copy.</span>
       <button type="button" aria-label="Dismiss backup reminder" onclick={dismissBackupHint}>✕</button>
     </div>
+  {/if}
+  {#if calibrating}
+    <CalibrateView {site} {active} onapply={applyCalibration} onclose={() => (calibrating = false)} />
   {/if}
 </section>
 

@@ -301,6 +301,7 @@
         site={horizonSite}
         initial={swept && swept.siteId === horizonSite.id && swept.rev === horizonRev ? swept.profile : undefined}
         bind:dirty={horizonDirty}
+        {active}
         onclose={closeHorizon}
       />
     {/key}

@@ -3,7 +3,7 @@
   import { SweepAccumulator, type Rejection } from '../lib/sweep/binning'
   import { declination } from '../lib/sweep/geomag'
   import { wrap360, type OrientationSample } from '../lib/sweep/orientation'
-  import { keepAwake, now, requestMotionPermission, sensorSupport, startCamera, startOrientation } from '../lib/sweep/sensors'
+  import { keepAwake, now, requestMotionPermission, SENSOR_MSG, sensorSupport, startCamera, startOrientation } from '../lib/sweep/sensors'
   import type { HorizonProfile, Site } from '../lib/types'
 
   // Start panel (inside Sites) and, once running, a full-viewport camera overlay.
@@ -19,11 +19,7 @@
     sweptBins?: number
   } = $props()
 
-  const MSG = {
-    insecure: 'Sensors need a secure (https) page.',
-    denied: 'Motion access was refused. Close Safari (or the Home Screen app) completely, reopen this page, tap Start and choose Allow.',
-    unsupported: 'This needs a phone or tablet with a compass.',
-  }
+  const MSG = SENSOR_MSG
   const STATUS: Record<Exclude<Rejection, 'invalid'>, string> = {
     'not-upright': 'Hold the phone upright, camera at the skyline',
     roll: 'Keep the phone level — don’t tilt it sideways',
