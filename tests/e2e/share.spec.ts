@@ -192,6 +192,35 @@ test.describe('Share and import a horizon', () => {
     expect((await stored(b)).sites[0].horizon.altitudes[90]).toBe(25)
   })
 
+  test('import into a site while its form has typed changes asks before dropping them', async ({ page, context }) => {
+    const link = await shareLink(page)
+    const b = await context.newPage()
+    await seedStorage(b, stateWithGarden())
+    const answer = { value: false }
+    const msgs = answerDialogs(b, answer)
+    await b.goto('/#sites')
+    await b.getByRole('button', { name: 'Edit', exact: true }).click()
+    await b.getByLabel('Name').fill('Back garden')
+    const hash = new URL(link).hash
+
+    await b.evaluate((h) => { location.hash = h }, hash)
+    const dialog = b.getByRole('dialog', { name: 'Import horizon' })
+    await dialog.getByLabel('Import into').selectOption('garden')
+    await dialog.getByRole('button', { name: 'Replace horizon' }).click()
+    await expect(dialog).toBeHidden()
+    expect(msgs).toEqual(['Discard unsaved site details?'])
+    await expect(b.getByLabel('Name')).toHaveValue('Back garden')
+    expect((await stored(b)).sites[0].horizon).toBeNull()
+
+    answer.value = true
+    await b.evaluate((h) => { location.hash = h }, hash)
+    await dialog.getByLabel('Import into').selectOption('garden')
+    await dialog.getByRole('button', { name: 'Replace horizon' }).click()
+    await expect(b.getByRole('region', { name: 'Horizon for Garden' })).toBeVisible()
+    await expect(b.getByLabel('Name')).toHaveCount(0)
+    expect((await stored(b)).sites[0].horizon.altitudes[90]).toBe(25)
+  })
+
   test('a second link while the dialog is open replaces the first', async ({ page, context }) => {
     const first = await shareLink(page, 25)
     const p2 = await context.newPage()

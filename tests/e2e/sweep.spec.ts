@@ -14,7 +14,7 @@ const headings = (from: number, to: number) => Array.from({ length: to - from },
 
 async function startSweep(page: Page): Promise<void> {
   await page.goto('/#sites')
-  await page.getByRole('button', { name: 'Sweep horizon' }).click()
+  await page.getByRole('button', { name: 'Sweep horizon' }).first().click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
   const sweep = page.getByRole('dialog', { name: 'Horizon sweep' })
   await expect(sweep).toBeVisible()
@@ -193,6 +193,48 @@ test.describe('Phone horizon sweep', () => {
     await sweep.getByRole('button', { name: 'Cancel' }).click()
     await expect(sweep).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Start', exact: true })).toHaveCount(0)
+  })
+
+  test('a paused sweep is only discarded after asking: Tonight link, Edit, Edit horizon, Add site, another Sweep', async ({ page }) => {
+    const state = seededState()
+    state.sites.push({ ...state.sites[0], id: 'cabin', name: 'Cabin', isDefault: false })
+    await seedStorage(page, state)
+    await stubSensors(page, { testNow: TEST_NOW })
+    const answer = { value: false }
+    const msgs: string[] = []
+    page.on('dialog', (d) => { msgs.push(d.message()); void (answer.value ? d.accept() : d.dismiss()) })
+    await startSweep(page)
+    await aim(page, headings(1, 100).map((h) => [h, 5] as [number, number]))
+    const count = (await page.getByRole('dialog', { name: 'Horizon sweep' }).getByText(/^\d+\/360$/).textContent())!
+
+    // iOS swipe-back lands on Tonight, whose "no horizon" banner links to the editor.
+    await page.evaluate(() => { location.hash = '#tonight' })
+    await page.getByRole('link', { name: 'Set the horizon' }).click()
+    const paused = page.getByText(`Sweep paused — ${count} swept.`)
+    await expect(paused).toBeVisible()
+    await expect(page.getByRole('region', { name: /^Horizon for/ })).toHaveCount(0)
+
+    const london = page.getByRole('listitem').filter({ has: page.getByText('London', { exact: true }) })
+    const cabin = page.getByRole('listitem').filter({ hasText: 'Cabin' })
+    await london.getByRole('button', { name: 'Edit', exact: true }).click()
+    await london.getByRole('button', { name: 'Edit horizon' }).click()
+    await page.getByRole('button', { name: 'Add site' }).click()
+    await cabin.getByRole('button', { name: 'Sweep horizon' }).click()
+    await expect(paused).toBeVisible()
+    await expect(page.getByRole('region', { name: /^Horizon for/ })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: /site$/i })).toHaveCount(0)
+    expect(msgs).toEqual(new Array(5).fill('Discard the sweep in progress?'))
+
+    // Same site's Sweep horizon keeps the paused sweep without asking.
+    await london.getByRole('button', { name: 'Sweep horizon' }).click()
+    await expect(paused).toBeVisible()
+    expect(msgs).toHaveLength(5)
+
+    answer.value = true
+    await cabin.getByRole('button', { name: 'Sweep horizon' }).click()
+    await expect(paused).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Sweep horizon for Cabin' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible()
   })
 
   test('Done and Cancel release the camera', async ({ page }) => {

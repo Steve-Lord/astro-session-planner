@@ -18,6 +18,8 @@
   let error = $state<string | null>(null)
   let sweepSiteId = $state<string | null>(null)
   let sweepBins = $state(0)
+  /** A sweep with more bins than this is only discarded after asking. */
+  const CONFIRM_SWEEP_BINS = 30
   /** A just-finished sweep, handed to the editor mounted for exactly this site and revision. */
   let swept = $state.raw<{ siteId: string; rev: number; profile: HorizonProfile } | null>(null)
   let geoMsg = $state<string | null>(null)
@@ -43,10 +45,35 @@
     return true
   }
 
-  function openHorizon(id: string): void {
-    if (id === horizonSiteId || !leaveHorizon()) return
-    editing = null
+  /** Confirm before discarding a sweep (paused or running) with real progress; closes it when allowed. */
+  function leaveSweep(): boolean {
+    if (sweepSiteId === null) return true
+    if (sweepBins > CONFIRM_SWEEP_BINS && !confirm('Discard the sweep in progress?')) return false
     sweepSiteId = null
+    sweepBins = 0
+    return true
+  }
+
+  /** Field values as text, to tell whether the open site form has been changed. */
+  const formFields = () => JSON.stringify([name, lat, lon, elevation, timezone, bortle, sqm, isDefault, treesBare])
+  let formOpened = ''
+
+  /** Confirm before discarding typed site details; closes the form when allowed. */
+  function leaveForm(): boolean {
+    if (editing === null) return true
+    if (formFields() !== formOpened && !confirm('Discard unsaved site details?')) return false
+    editing = null
+    error = null
+    return true
+  }
+
+  /** At most one of the site form, a sweep and the horizon editor is open: true once it may be replaced. */
+  function leavePanels(): boolean {
+    return leaveForm() && leaveSweep() && leaveHorizon()
+  }
+
+  function openHorizon(id: string): void {
+    if (id === horizonSiteId || !leavePanels()) return
     swept = null
     horizonSiteId = id
   }
@@ -57,8 +84,7 @@
   }
 
   function openSweep(id: string): void {
-    if (!leaveHorizon()) return
-    editing = null
+    if (id === sweepSiteId || !leavePanels()) return // the same site keeps its (paused) sweep
     closeHorizon()
     sweepSiteId = id
   }
@@ -108,14 +134,8 @@
     ui.applyImport = null
     const site = appState.sites.find((s) => s.id === req.siteId)
     if (!site) return
-    // End a sweep first; with real progress, the user decides which one to keep.
-    if (sweepSiteId !== null) {
-      if (sweepBins > 30 && !confirm('Discard the sweep in progress?')) return
-      sweepSiteId = null
-      sweepBins = 0
-    }
-    if (!leaveHorizon()) return
-    editing = null
+    // End a sweep or a changed site form first; with real progress, the user decides what to keep.
+    if (!leavePanels()) return
     swept = null
     site.horizon = req.profile
     horizonSiteId = site.id
@@ -123,11 +143,10 @@
   })
 
   function openForm(site: Site | null): boolean {
-    if (!leaveHorizon()) return false
+    if (!leavePanels()) return false
     error = null
     geoMsg = null
     closeHorizon()
-    sweepSiteId = null
     editing = site ? site.id : 'new'
     name = site?.name ?? ''
     lat = site ? String(site.lat) : ''
@@ -138,6 +157,7 @@
     sqm = site?.sky.sqm !== undefined ? String(site.sky.sqm) : ''
     isDefault = site ? site.isDefault : appState.sites.length === 0
     treesBare = site?.treesBare ?? false
+    formOpened = formFields()
     return true
   }
 
