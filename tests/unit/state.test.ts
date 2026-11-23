@@ -166,6 +166,26 @@ describe('site normalisation on import', () => {
     expect(importState(backup({}, ['horizon'])).sites[0].horizon).toBeNull();
     expect(importState(backup({ horizon: horizon() })).sites[0].horizon?.altitudes).toHaveLength(360);
   });
+  it('defaults a missing calibration to null and validates calibration and unswept', () => {
+    expect(importState(backup({ horizon: horizon() })).sites[0].horizon?.calibration).toBeNull();
+    const cal = { target: 'moon', at: '2026-11-22T20:00:00Z', residualAltDeg: 0.4 };
+    expect(importState(backup({ horizon: horizon({ calibration: cal }) })).sites[0].horizon?.calibration).toEqual(cal);
+    expect(() => importState(backup({ horizon: horizon({ calibration: { target: 'moon', at: 'x' } }) }))).toThrow('sites[0].horizon.calibration');
+    expect(() => importState(backup({ horizon: horizon({ calibration: { ...cal, residualAltDeg: null } }) }))).toThrow('sites[0].horizon.calibration');
+    const ok = new Array(360).fill(false);
+    expect(importState(backup({ horizon: horizon({ unswept: ok }) })).sites[0].horizon?.unswept).toHaveLength(360);
+    expect(() => importState(backup({ horizon: horizon({ unswept: [true] }) }))).toThrow('sites[0].horizon.unswept must have 360 entries');
+    expect(() => importState(backup({ horizon: horizon({ unswept: new Array(360).fill(1) }) }))).toThrow('sites[0].horizon.unswept');
+  });
+  it('accepts and keeps sweptHere: true; rejects other values', () => {
+    expect(importState(backup({ horizon: horizon({ sweptHere: true }) })).sites[0].horizon?.sweptHere).toBe(true);
+    expect(importState(backup({ horizon: horizon() })).sites[0].horizon).not.toHaveProperty('sweptHere');
+    expect(() => importState(backup({ horizon: horizon({ sweptHere: 'yes' }) }))).toThrow('sites[0].horizon.sweptHere must be true when present');
+    expect(() => importState(backup({ horizon: horizon({ sweptHere: false }) }))).toThrow('sites[0].horizon.sweptHere');
+    const st = new MemStorage();
+    saveState(st, importState(backup({ horizon: horizon({ sweptHere: true }) })));
+    expect(loadState(st).state.sites[0].horizon?.sweptHere).toBe(true);
+  });
   it('rejects malformed horizons naming the field', () => {
     expect(() => importState(backup({ horizon: 3 }))).toThrow('sites[0].horizon must be null or an object');
     expect(() => importState(backup({ horizon: horizon({ altitudes: [1, 2] }) }))).toThrow('sites[0].horizon.altitudes must have 360 entries');

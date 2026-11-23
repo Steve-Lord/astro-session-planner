@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { magneticAzimuth } from '../../src/lib/sweep/sensors'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { magneticAzimuth, now } from '../../src/lib/sweep/sensors'
 
 const fresh = () => ({ k: null as number | null, samples: 0 })
 
@@ -34,5 +34,20 @@ describe('magneticAzimuth (Ruling P1)', () => {
   it('non-absolute readings with no compass: null', () => {
     expect(magneticAzimuth({ platform: 'android', azRel: 10, beta: 90, compassHeading: null, absolute: false }, fresh()).azMag).toBeNull()
     expect(magneticAzimuth({ platform: 'other', azRel: 10, beta: 90, compassHeading: null, absolute: false }, fresh()).azMag).toBeNull()
+  })
+})
+
+describe('now() (R2 test clock)', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('returns window.__testNow when it is a number', () => {
+    vi.stubGlobal('window', { __testNow: Date.UTC(2026, 5, 1, 12) })
+    expect(now().toISOString()).toBe('2026-06-01T12:00:00.000Z')
+  })
+  it('otherwise returns the current time', () => {
+    vi.stubGlobal('window', { __testNow: 'nope' })
+    const before = Date.now()
+    const t = now().getTime()
+    expect(t).toBeGreaterThanOrEqual(before)
+    expect(t).toBeLessThanOrEqual(Date.now())
   })
 })

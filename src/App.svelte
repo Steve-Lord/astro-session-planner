@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { startAutoSave } from './lib/store/state.svelte'
+  import { startAutoSave, ui } from './lib/store/state.svelte'
   import Tonight from './ui/Tonight.svelte'
   import Sites from './ui/Sites.svelte'
   import GearView from './ui/GearView.svelte'
   import Settings from './ui/Settings.svelte'
   import SensorProbe from './ui/SensorProbe.svelte'
+  import ImportHorizon from './ui/ImportHorizon.svelte'
+  import { readImportHash } from './lib/horizon/share'
 
   const TABS = [
     { id: 'tonight', label: 'Tonight' },
@@ -21,9 +23,24 @@
   const isProbe = () => location.hash === '#sensor-probe'
   let probe = $state(isProbe())
 
+  // A horizon link (#import-horizon=…) opens the import dialog; the hash is then replaced so a reload
+  // does not re-trigger it.
+  function checkImport(): boolean {
+    const payload = readImportHash(location.hash)
+    if (payload === null) return false
+    ui.importPayload = payload
+    ui.pendingImport = null
+    probe = false
+    history.replaceState(null, '', location.pathname + location.search + '#sites')
+    tab = 'sites'
+    return true
+  }
+
   onMount(() => {
     const stop = startAutoSave()
+    checkImport()
     const onHash = () => {
+      if (checkImport()) return
       tab = fromHash()
       probe = isProbe()
     }
@@ -34,6 +51,12 @@
     }
   })
 </script>
+
+{#if ui.importPayload !== null}
+  {#key ui.importPayload}
+    <ImportHorizon payload={ui.importPayload} />
+  {/key}
+{/if}
 
 <h1 class="app-title">Astro Session Planner</h1>
 {#if !probe}
@@ -46,7 +69,7 @@
 <!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
      survive tab switches. -->
 <div hidden={probe || tab !== 'tonight'}><Tonight /></div>
-<div hidden={probe || tab !== 'sites'}><Sites /></div>
+<div hidden={probe || tab !== 'sites'}><Sites active={!probe && tab === 'sites' && ui.importPayload === null} /></div>
 {#if probe}
   <SensorProbe />
 {:else if tab === 'gear'}

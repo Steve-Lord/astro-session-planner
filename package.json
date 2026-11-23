@@ -10,7 +10,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.test.json && tsc -p tsconfig.node.json",
     "test": "vitest run --passWithNoTests",
     "e2e": "npm run build && playwright test",
-    "build:catalog": "tsx scripts/build-catalog.ts"
+    "build:catalog": "tsx scripts/build-catalog.ts",
+    "build:wmm": "tsx scripts/build-wmm.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",
-    "date-fns-tz": "^3.2.0"
+    "date-fns-tz": "^3.2.0",
+    "qrcode-generator": "^2.0.4"
   }
 }

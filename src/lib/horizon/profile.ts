@@ -11,6 +11,7 @@ export function flatProfile(): HorizonProfile {
     northOffsetDeg: 0,
     createdAt: new Date().toISOString(),
     source: 'manual',
+    calibration: null,
   };
 }
 

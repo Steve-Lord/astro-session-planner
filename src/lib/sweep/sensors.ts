@@ -4,6 +4,13 @@ import { angDiff, cameraDirection, wrap360, type OrientationSample } from './ori
 type IOSOrientationEvent = DeviceOrientationEvent & { webkitCompassHeading?: number; webkitCompassAccuracy?: number }
 type PermissionCtor = { requestPermission?: () => Promise<'granted' | 'denied' | 'default'> }
 
+/** User-facing sensor failures shared by the sweep and calibrate screens. */
+export const SENSOR_MSG = {
+  insecure: 'Sensors need a secure (https) page.',
+  denied: 'Motion access was refused. Close Safari (or the Home Screen app) completely, reopen this page, tap Start and choose Allow.',
+  unsupported: 'This needs a phone or tablet with a compass.',
+}
+
 export function sensorSupport(): { secure: boolean; orientation: boolean; needsPermission: boolean; camera: boolean } {
   const ctor = typeof DeviceOrientationEvent === 'undefined' ? undefined : (DeviceOrientationEvent as unknown as PermissionCtor)
   return {
@@ -22,6 +29,71 @@ export function requestMotionPermission(): Promise<'granted' | 'denied' | 'not-n
     (r) => (r === 'granted' ? 'granted' : 'denied'),
     () => 'denied',
   )
+}
+
+/** Current time; e2e tests pin it with `window.__testNow` (epoch ms). */
+export function now(): Date {
+  const t = typeof window === 'undefined' ? undefined : (window as Window & { __testNow?: unknown }).__testNow
+  return typeof t === 'number' ? new Date(t) : new Date()
+}
+
+/**
+ * Rear camera into `video` (muted, inline). Resolves to a stop function; rejects with the getUserMedia error.
+ * `onended` runs if the browser ends the camera track itself (another app took the camera, iOS suspended
+ * the page); calling stop does not trigger it.
+ */
+export async function startCamera(video: HTMLVideoElement | null | undefined, onended?: () => void): Promise<() => void> {
+  if (!video) throw new DOMException('No video element to show the camera in', 'InvalidStateError')
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+  const ended = () => onended?.()
+  for (const t of stream.getTracks()) t.addEventListener('ended', ended)
+  const stop = () => {
+    for (const t of stream.getTracks()) {
+      t.removeEventListener('ended', ended)
+      t.stop()
+    }
+    if (video.srcObject === stream) video.srcObject = null
+  }
+  try {
+    video.muted = true
+    video.playsInline = true
+    video.setAttribute('playsinline', '')
+    video.srcObject = stream
+  } catch (e) {
+    stop() // never leave the camera on after a failure
+    throw e
+  }
+  try {
+    await video.play()
+  } catch {
+    // autoplay of a muted inline stream can still be refused; the frame shows once it plays
+  }
+  return stop
+}
+
+/** Keeps the screen on while sweeping. A no-op where the Wake Lock API is missing or refuses. */
+export async function keepAwake(): Promise<() => void> {
+  let sentinel: WakeLockSentinel | null = null
+  let stopped = false
+  const acquire = async () => {
+    try {
+      sentinel = (await navigator.wakeLock?.request('screen')) ?? null
+      if (stopped) void sentinel?.release().catch(() => {})
+    } catch {
+      sentinel = null
+    }
+  }
+  // The lock is dropped whenever the page is hidden; take it again on return.
+  const onVisible = () => { if (!stopped && document.visibilityState === 'visible') void acquire() }
+  if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return () => {}
+  await acquire()
+  document.addEventListener('visibilitychange', onVisible)
+  return () => {
+    stopped = true
+    document.removeEventListener('visibilitychange', onVisible)
+    void sentinel?.release().catch(() => {})
+    sentinel = null
+  }
 }
 
 export type AzimuthInput = { platform: 'ios' | 'android' | 'other'; azRel: number; beta: number; compassHeading: number | null; absolute: boolean }
