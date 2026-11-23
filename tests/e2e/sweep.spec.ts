@@ -55,6 +55,36 @@ test.describe('Phone horizon sweep', () => {
     expect(Math.abs(h.altitudes[120] - 30)).toBeLessThanOrEqual(1)
   })
 
+  test('after Done the editor says Save now; a touched-up sweep saves as manual but keeps the badge and Calibrate north', async ({ page }) => {
+    await seedStorage(page)
+    await stubSensors(page, { testNow: TEST_NOW })
+    await startSweep(page)
+    const sweep = page.getByRole('dialog', { name: 'Horizon sweep' })
+    await aim(page, [...headings(0, 360), 0].map((h) => [h, roof(h)] as [number, number]))
+    await sweep.getByRole('button', { name: 'Done' }).click()
+
+    const editor = page.getByRole('region', { name: 'Horizon for London' })
+    await expect(editor.getByText('Save now — an unsaved sweep is lost if the phone closes the page. You can calibrate north later from Edit horizon.')).toBeVisible()
+    await expect(editor.getByText(/^Calibrate now/)).toHaveCount(0)
+    await slider(page, 200).focus()
+    await page.keyboard.press('ArrowUp')
+    await editor.getByRole('button', { name: 'Save now' }).click()
+
+    const h = (await stored(page)).sites[0].horizon
+    expect(h.source).toBe('manual')
+    expect(h.sweptHere).toBe(true)
+    expect(h.calibration).toBeNull()
+    await expect(editor.getByText(/^Save now/)).toHaveCount(0)
+    await expect(editor.getByText('Calibrate now (recommended) — the compass is only rough near buildings')).toBeVisible()
+
+    // Later: reopened from the stored copy, the touched-up sweep still offers calibration and shows the badge.
+    await editor.getByRole('button', { name: 'Close' }).click()
+    await expect(editor).toHaveCount(0)
+    await page.getByRole('button', { name: 'Edit horizon' }).click()
+    await expect(editor.getByText('Uncalibrated — calibrate north for accuracy')).toBeVisible()
+    await expect(editor.getByRole('button', { name: 'Calibrate north' })).toBeVisible()
+  })
+
   test('an 8° gap is reported; Fill from neighbours opens the editor with hatched bins', async ({ page }) => {
     await seedStorage(page)
     await stubSensors(page, { testNow: TEST_NOW })
@@ -314,8 +344,8 @@ test.describe('Phone horizon sweep', () => {
       await aim(page, [...headings(0, 360), 0].map((h) => [h, roof(h)] as [number, number]))
       await page.getByRole('dialog', { name: 'Horizon sweep' }).getByRole('button', { name: 'Done' }).click()
       const editor = page.getByRole('region', { name: 'Horizon for London' })
-      await expect(editor.getByText('Calibrate now (recommended) — the compass is only rough near buildings')).toBeVisible()
-      await editor.getByRole('button', { name: 'Calibrate', exact: true }).click()
+      await expect(editor.getByText(/^Save now — an unsaved sweep is lost/)).toBeVisible()
+      await editor.getByRole('button', { name: 'Calibrate north' }).click()
       const cal = page.getByRole('dialog', { name: 'Calibrate north' })
       await expect(cal).toBeVisible()
       return { editor, cal }
@@ -418,7 +448,7 @@ test.describe('Phone horizon sweep', () => {
       const altitudes = Array.from({ length: 360 }, (_, i) => (i >= 90 && i < 150 ? 30 : 2))
       ;(st.sites[0] as { horizon: unknown }).horizon = {
         altitudes, seasonal: new Array(360).fill(false), leafOffAltitudes: altitudes.slice(),
-        northOffsetDeg: 0, createdAt: '2026-11-01T00:00:00.000Z', source: 'sweep', calibration: null,
+        northOffsetDeg: 0, createdAt: '2026-11-01T00:00:00.000Z', source: 'sweep', calibration: null, sweptHere: true,
       }
       await seedStorage(page, st)
       await stubSensors(page, { testNow: t })

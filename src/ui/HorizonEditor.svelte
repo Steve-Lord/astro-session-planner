@@ -53,9 +53,13 @@
   })
 
   const hasSensors = sensorSupport().orientation
-  const canCalibrate = $derived(hasSensors && profile.source === 'sweep' && profile.altitudes.some((a) => a > 0))
-  const suggestCalibrate = $derived(canCalibrate && profile.calibration === null)
-  const uncalibrated = $derived(profile.calibration === null && (profile.source === 'sweep' || profile.source === 'import'))
+  // R13: calibration and the badge follow a sweep made on this device, through hand edits (which happen in the
+  // sweep's own frame, so rotating the whole profile keeps them consistent). Imports never carry sweptHere.
+  const canCalibrate = $derived(hasSensors && profile.sweptHere === true && profile.altitudes.some((a) => a > 0))
+  const uncalibrated = $derived(profile.sweptHere === true && profile.calibration === null)
+  // R14: an unsaved sweep lives only in memory (iOS can discard the page), so Save comes first; calibrate later.
+  const suggestSave = $derived(uncalibrated && dirty)
+  const suggestCalibrate = $derived(canCalibrate && profile.calibration === null && !dirty)
 
   /** Contiguous unswept runs as [startAz, endAz], drawn hatched. */
   const unsweptRuns = $derived.by(() => {
@@ -207,7 +211,12 @@
 <section class="card" aria-label={`Horizon for ${site.name}`}>
   <h3>Horizon: {site.name}</h3>
   {#if uncalibrated}<span class="badge warn">Uncalibrated — calibrate north for accuracy</span>{/if}
-  {#if suggestCalibrate}
+  {#if suggestSave}
+    <div class="banner warn" role="status">
+      <span>Save now — an unsaved sweep is lost if the phone closes the page. You can calibrate north later from Edit horizon.</span>
+      <button type="button" onclick={save}>Save now</button>
+    </div>
+  {:else if suggestCalibrate}
     <div class="banner warn" role="status">
       <span>Calibrate now (recommended) — the compass is only rough near buildings</span>
       <button type="button" onclick={() => (calibrating = true)}>Calibrate</button>

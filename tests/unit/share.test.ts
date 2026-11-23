@@ -39,6 +39,13 @@ describe('horizon share encoding', () => {
     expect(q.calibration?.target).toBe('imported')
     expect(q.unswept).toBeUndefined()
   })
+  it('never encodes sweptHere: an import is not a sweep made on this device', async () => {
+    const swept = profile({ sweptHere: true, calibration: null })
+    const s = await encodeHorizon(swept)
+    expect(s).toBe(await encodeHorizon(profile({ calibration: null })))
+    const q = await decodeHorizon(s)
+    expect('sweptHere' in q).toBe(false)
+  })
   it('uncalibrated flat profile has no calibration and is tiny', async () => {
     const s = await encodeHorizon(flat())
     expect(s.length).toBeLessThan(120)

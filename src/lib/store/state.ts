@@ -69,6 +69,7 @@ function checkHorizon(h: unknown, path: string): void {
     if (!Array.isArray(h.unswept) || h.unswept.length !== 360) throw new Error(`${path}.unswept must have 360 entries`);
     if (!h.unswept.every((v) => typeof v === 'boolean')) throw new Error(`${path}.unswept has invalid entries`);
   }
+  if (h.sweptHere !== undefined && h.sweptHere !== true) throw new Error(`${path}.sweptHere must be true when present`);
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);

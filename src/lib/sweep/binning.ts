@@ -175,6 +175,7 @@ export class SweepAccumulator {
       createdAt: new Date().toISOString(),
       source: 'sweep',
       calibration: null,
+      sweptHere: true,
       ...(unswept.some(Boolean) ? { unswept } : {}),
     }
   }

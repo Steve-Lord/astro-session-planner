@@ -4,7 +4,8 @@ export interface HorizonCalibration { target: string; at: string; residualAltDeg
 export interface HorizonProfile { altitudes: number[]; seasonal: boolean[]; leafOffAltitudes: number[];
   northOffsetDeg: number; createdAt: string; source: 'sweep' | 'manual' | 'import';   // arrays length 360, index = true azimuth°
   calibration: HorizonCalibration | null;   // null = uncalibrated
-  unswept?: boolean[]; }                    // true where the sweep had no data (sweep-sourced only; absent = all swept)
+  unswept?: boolean[];                      // true where the sweep had no data (sweep-sourced only; absent = all swept)
+  sweptHere?: true; }                       // made by a sweep on this device (kept through hand edits); never shared
 export interface Site { id: string; name: string; lat: number; lon: number; elevation: number; timezone: string;
   sky: { bortle?: number; sqm?: number }; horizon: HorizonProfile | null; treesBare: boolean; isDefault: boolean; }
 export interface Filter { id: string; name: string; kind: FilterKind; }

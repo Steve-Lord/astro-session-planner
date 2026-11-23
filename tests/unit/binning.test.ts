@@ -38,6 +38,7 @@ describe('SweepAccumulator', () => {
     expect(p.altitudes).toHaveLength(360)
     for (let az = 0; az < 360; az++) expect(Math.abs(p.altitudes[az] - skyline(az))).toBeLessThanOrEqual(1)
     expect(p.source).toBe('sweep')
+    expect(p.sweptHere).toBe(true)
     expect(p.calibration).toBeNull()
     expect(p.northOffsetDeg).toBe(0)
     expect(p.seasonal.every(x => x === false)).toBe(true)
