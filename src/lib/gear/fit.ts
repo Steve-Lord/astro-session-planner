@@ -17,6 +17,14 @@ export const SEESTAR_S50_PRO: Gear = {
   builtIn: true,
 };
 
+/** Upper altitude limit per mount: alt-az tracking fails near the zenith; a polar-aligned wedge does not. */
+export const MOUNT_MAX_ALT: Record<Gear['mount'], number> = { altaz: 80, eq: 90 };
+
+/** A copy of `g` on the given mount, with the matching upper altitude limit. */
+export function withMount(g: Gear, mount: Gear['mount']): Gear {
+  return { ...g, mount, maxAltDeg: MOUNT_MAX_ALT[mount] };
+}
+
 const RAD_TO_ARCMIN = (180 / Math.PI) * 60;
 
 function angleArcmin(sizeMm: number, focalMm: number): number {

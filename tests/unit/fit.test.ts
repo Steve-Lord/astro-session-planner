@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SEESTAR_S50_PRO, fovArcmin, frameFit } from '../../src/lib/gear/fit';
+import { SEESTAR_S50_PRO, fovArcmin, frameFit, withMount } from '../../src/lib/gear/fit';
 import type { Target } from '../../src/lib/types';
 
 function target(maj: number | null, min: number | null): Target {
@@ -60,5 +60,18 @@ describe('frameFit', () => {
   it('too-small wins over mosaic and fill is maj/long for mosaics', () => {
     expect(frameFit(target(190, 60), g, 2).label).toBe('too-small');
     expect(frameFit(target(190, 60), g, 0.05).fill).toBeCloseTo(190 / fovArcmin(g).long, 6);
+  });
+});
+
+describe('withMount', () => {
+  it('withMount sets mount and the zenith limit', () => {
+    const eq = withMount(SEESTAR_S50_PRO, 'eq');
+    expect(eq.mount).toBe('eq');
+    expect(eq.maxAltDeg).toBe(90);
+    expect(withMount(eq, 'altaz').maxAltDeg).toBe(80);
+    expect(SEESTAR_S50_PRO.mount).toBe('altaz');
+    const { mount: _m, maxAltDeg: _x, ...rest } = eq;
+    const { mount: _m2, maxAltDeg: _x2, ...orig } = SEESTAR_S50_PRO;
+    expect(rest).toEqual(orig);
   });
 });

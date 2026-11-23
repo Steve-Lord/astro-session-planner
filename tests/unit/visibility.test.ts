@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { buildContext, neverRises, visibility } from '../../src/lib/plan/visibility'
 import { altAz, lstDeg, precessToDate } from '../../src/lib/astro/positions'
 import { flatProfile, setRange } from '../../src/lib/horizon/profile'
-import { SEESTAR_S50_PRO } from '../../src/lib/gear/fit'
+import { SEESTAR_S50_PRO, withMount } from '../../src/lib/gear/fit'
 import { DEFAULT_SETTINGS } from '../../src/lib/sky/brightness'
 import { fromZonedTime } from 'date-fns-tz'
 import type { Site, Target } from '../../src/lib/types'
@@ -50,6 +50,15 @@ describe('visibility', () => {
     expect(Math.abs(v.windows[0].end - ctx!.dark.end)).toBeLessThanOrEqual(5 * 60000)
     expect(v.best).toEqual(v.windows[0])
     expect(v.peakAlt).toBeGreaterThan(60)
+  })
+
+  it('eq mount keeps a near-zenith transit in one window', () => {
+    const zen = tgt('zen', 90, 51.5)
+    expect(visibility(zen, ctx!).windows.length).toBe(2)
+    const eqCtx = buildContext(london, withMount(gear, 'eq'), settings, '2026-12-21').ctx!
+    const v = visibility(zen, eqCtx)
+    expect(v.windows.length).toBe(1)
+    expect(v.peakAlt).toBeGreaterThan(85)
   })
 
   it('a horizon obstruction splits the run in two', () => {

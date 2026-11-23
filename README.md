@@ -6,6 +6,10 @@ A deep-sky astrophotography night planner: pick a site, see what is worth shooti
 
 Your site location and horizon profile are stored only in your browser (local storage) and never leave your device. The only thing that would ever be sent anywhere is a weather lookup (a later feature), and that would send coordinates rounded to a coarse precision, nothing else.
 
+## Gear
+
+Set Mount to Equatorial when the Seestar is polar-aligned on a wedge; targets passing overhead then count all the way up. Alt-az (the default) stops at 80°, where alt-az tracking fails.
+
 ## Horizon sweep (phone)
 
 Sweep your skyline with the phone instead of drawing it by hand. This needs a phone or tablet with motion sensors and a camera: iPhone Safari is the primary target (Safari tab or Home Screen app), Android Chrome is best-effort. Laptops and desktops have no motion sensors, so there the sweep is unavailable and you use the manual editor, or sweep on your phone and send the result across.
