@@ -54,7 +54,7 @@
   dt { color: var(--text-dim); }
   dd { margin: 0; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .seg button { background: transparent; color: var(--text-dim); border: 0; padding: 4px 12px; font: inherit; cursor: pointer; }
+  .seg button { background: transparent; color: var(--text-dim); border: 0; padding: 4px 14px; min-height: 40px; font: inherit; cursor: pointer; }
   .seg button + button { border-left: 1px solid var(--border); }
   .seg button[aria-pressed='true'] { background: var(--surface-2); color: var(--accent-text); }
   .note { color: var(--text-dim); font-size: 13px; }

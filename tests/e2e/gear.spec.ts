@@ -50,6 +50,10 @@ test.describe('Gear mount switch', () => {
     const card = page.getByRole('region', { name: 'Seestar S50 Pro' })
     await expect(card.getByRole('group', { name: 'Mount' })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    for (const name of ['Alt-az', 'Equatorial']) {
+      const box = await card.getByRole('button', { name }).boundingBox()
+      expect(box!.height).toBeGreaterThanOrEqual(40)
+    }
     await card.getByRole('button', { name: 'Alt-az' }).click()
     await expect(card).toContainText('15°–80°')
   })
