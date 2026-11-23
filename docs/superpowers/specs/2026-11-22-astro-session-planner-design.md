@@ -178,3 +178,9 @@ The owner has no list of past results. The builder assembles a regression set of
 - Magnetic declination model choice (embedded WMM coefficients or equivalent).
 - Sweep sampling/filtering details and UX polish.
 - Catalog preprocessing details and which OpenNGC object types to include (exclude stars, duplicates, nonexistent).
+
+## Changes after Plan 2
+
+- Calibration targets are filtered by daylight: the Moon any time, Venus once the Sun is below the horizon, Jupiter, Saturn, Mars and bright stars only once the Sun is 6 degrees below it.
+- Calibration is offered only for horizons whose source is a sweep on this device; imported and manual horizons cannot be calibrated, and hand-editing the shape marks a swept horizon manual.
+- Recalibrating replaces the previous correction rather than stacking on it.

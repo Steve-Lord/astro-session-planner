@@ -6,6 +6,16 @@ A deep-sky astrophotography night planner: pick a site, see what is worth shooti
 
 Your site location and horizon profile are stored only in your browser (local storage) and never leave your device. The only thing that would ever be sent anywhere is a weather lookup (a later feature), and that would send coordinates rounded to a coarse precision, nothing else.
 
+## Horizon sweep (phone)
+
+Sweep your skyline with the phone instead of drawing it by hand. This needs a phone or tablet with motion sensors and a camera: iPhone Safari is the primary target (Safari tab or Home Screen app), Android Chrome is best-effort. Laptops and desktops have no motion sensors, so there the sweep is unavailable and you use the manual editor, or sweep on your phone and send the result across.
+
+1. **Sweep.** On the Sites screen, tap Sweep horizon on the site. Stand where the telescope goes, hold the phone upright in portrait with the rear camera facing the horizon, and keep the on-screen line on the top edge of roofs and trees. Turn slowly all the way round, then tap Done. Samples are rejected while the phone is tilted or rolled, moving too fast, or the compass accuracy is poor (worse than 25 degrees); the screen tells you why. Directions you have not covered are hatched. Gaps of 5 degrees or less are interpolated; larger gaps must be swept again or filled from neighbours explicitly.
+2. **If motion access was refused (iPhone).** Close Safari (or the Home Screen app) completely, reopen it, tap Start, and choose Allow.
+3. **Calibrate after dark (recommended).** In the editor tap Calibrate north. The iPhone compass is only about 14 degrees accurate, so aim at something whose true position the app knows and lock on. Calibration is offered only for horizons swept on this device, not imported or hand-drawn ones. Targets: the Moon at any time; Venus once the Sun is below the horizon; Jupiter, Saturn, Mars and bright stars only once the Sun is 6 degrees below the horizon. The Sun is never offered. Calibrating again replaces the previous correction; it does not stack.
+4. **Touch up.** The editor lets you adjust the shape. Hand-editing the shape marks the horizon as manual, which removes the Calibrate north option.
+5. **Send to laptop.** In the horizon editor, tap Send to another device (Share or Copy link, or the QR code): share the link (AirDrop, Messages) or scan the QR code. The link carries only the horizon shape, no location or site name. On the other device, opening it asks which site it belongs to and asks before replacing an existing horizon.
+
 ## Development
 
 ```sh
