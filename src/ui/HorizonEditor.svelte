@@ -1,6 +1,7 @@
 <script lang="ts">
   import { flatProfile, setRange } from '../lib/horizon/profile'
   import { appState } from '../lib/store/state.svelte'
+  import { angDiff } from '../lib/sweep/orientation'
   import { rotateProfile } from '../lib/sweep/calibration'
   import { now, sensorSupport } from '../lib/sweep/sensors'
   import CalibrateView, { type CalibrationResult } from './CalibrateView.svelte'
@@ -52,8 +53,8 @@
   })
 
   const hasSensors = sensorSupport().orientation
-  const canCalibrate = $derived(hasSensors && profile.altitudes.some((a) => a > 0))
-  const suggestCalibrate = $derived(canCalibrate && profile.calibration === null && profile.source === 'sweep')
+  const canCalibrate = $derived(hasSensors && profile.source === 'sweep' && profile.altitudes.some((a) => a > 0))
+  const suggestCalibrate = $derived(canCalibrate && profile.calibration === null)
   const uncalibrated = $derived(profile.calibration === null && (profile.source === 'sweep' || profile.source === 'import'))
 
   /** Contiguous unswept runs as [startAz, endAz], drawn hatched. */
@@ -182,8 +183,10 @@
   }
 
   function applyCalibration(r: CalibrationResult): void {
+    // r.offsetDeg is the total correction from raw compass readings: only the change from what the profile already has is applied.
     profile = {
-      ...rotateProfile(profile, r.offsetDeg),
+      ...rotateProfile(profile, angDiff(profile.northOffsetDeg, r.offsetDeg)),
+      northOffsetDeg: r.offsetDeg,
       calibration: { target: r.label, at: now().toISOString(), residualAltDeg: r.residualAltDeg },
     }
     calibrating = false
@@ -289,7 +292,7 @@
     </div>
   {/if}
   {#if calibrating}
-    <CalibrateView {site} {active} onapply={applyCalibration} onclose={() => (calibrating = false)} />
+    <CalibrateView {site} {active} currentOffsetDeg={profile.northOffsetDeg} onapply={applyCalibration} onclose={() => (calibrating = false)} />
   {/if}
 </section>
 

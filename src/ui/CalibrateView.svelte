@@ -13,8 +13,10 @@
   // Full-viewport overlay: pick a bright object that is up, centre it in the ring, Lock, Apply.
   // `onapply` gets the north correction; the caller rotates its horizon. `active` false (another tab)
   // stops the camera and sensors and returns to the list.
-  let { site, onapply, onclose, active = true }: {
+  let { site, onapply, onclose, active = true, currentOffsetDeg = 0 }: {
     site: Site
+    /** The north offset the caller's profile already carries; results are shown relative to it. */
+    currentOffsetDeg?: number
     onapply: (r: CalibrationResult) => void
     onclose: () => void
     active?: boolean
@@ -52,7 +54,8 @@
   let phase = $state<Phase>('pick')
   // svelte-ignore state_referenced_locally
   let candidates = $state.raw<CalibrationCandidate[]>(calibrationCandidates(site, now()))
-  let targetId = $state<string | null>(null)
+  /** Snapshot taken when picked, so a list refresh can't pull the target from under the aiming view. */
+  let target = $state.raw<CalibrationCandidate | null>(null)
   let error = $state<string | null>(null)
   let notice = $state<string | null>(null)
   let video = $state<HTMLVideoElement>()
@@ -69,12 +72,11 @@
   let lockTimer: ReturnType<typeof setTimeout> | undefined
   let locked: { azMag: number; alt: number }[] = []
 
-  const target = $derived(candidates.find((c) => c.id === targetId) ?? null)
   const offBy = $derived(target && reading ? where(angDiff(reading.az, target.az), target.alt - reading.alt) : null)
 
   onMount(() => {
     const timer = setInterval(() => {
-      if (active) candidates = calibrationCandidates(site, now())
+      if (active && phase === 'pick') candidates = calibrationCandidates(site, now())
     }, REFRESH_MS)
     return () => clearInterval(timer)
   })
@@ -94,7 +96,7 @@
     if (!support.orientation) return void (error = MSG.unsupported)
     const my = ++session
     notice = null
-    targetId = c.id
+    target = c
     void permission.then(async (p) => {
       if (my !== session) return
       if (p === 'denied') return void (error = MSG.denied)
@@ -134,12 +136,20 @@
     lockTimer = setTimeout(() => {
       if (my !== session || phase !== 'locking') return
       // Compare with where the object is now (the Moon moves a little each minute).
-      const truth = calibrationCandidates(site, now()).find((c) => c.id === targetId) ?? target
-      if (locked.length < MIN_SAMPLES || !truth) {
+      const truth = calibrationCandidates(site, now()).find((c) => c.id === target?.id)
+      if (!truth) {
+        const label = target?.label ?? 'The target'
+        teardown()
+        candidates = calibrationCandidates(site, now())
+        notice = `${label} has moved out of range — pick another`
+        return
+      }
+      if (locked.length < MIN_SAMPLES) {
         aimHint = 'Hold steady on the target and try again.'
         phase = 'aim'
         return
       }
+      target = truth
       result = offsetFromAim(locked, { az: truth.az, alt: truth.alt }, decl)
       phase = 'result'
     }, LOCK_MS)
@@ -172,6 +182,8 @@
     candidates = calibrationCandidates(site, now())
   }
 
+  const change = $derived(result ? angDiff(currentOffsetDeg, result.offsetDeg) : 0)
+
   function apply(): void {
     if (!result || !target || result.spreadDeg > MAX_SPREAD_DEG) return
     const r = { offsetDeg: result.offsetDeg, residualAltDeg: result.residualAltDeg, label: target.label }
@@ -188,6 +200,7 @@
   $effect(() => {
     if (!active && phase !== 'pick') {
       teardown()
+      candidates = calibrationCandidates(site, now())
       notice = 'Paused — pick the object again to continue.'
     }
   })
@@ -225,10 +238,10 @@
 
     {#if phase === 'result' && result && target}
       <div class="result" role="group" aria-label="Calibration result">
-        <p>North corrected by {signed(result.offsetDeg)}°; altitude reads {Math.abs(result.residualAltDeg).toFixed(1)}° {result.residualAltDeg < 0 ? 'low' : 'high'}</p>
+        <p>North corrected by {signed(change)}°; altitude reads {Math.abs(result.residualAltDeg).toFixed(1)}° {result.residualAltDeg < 0 ? 'low' : 'high'}</p>
         {#if result.spreadDeg > MAX_SPREAD_DEG}
           <p class="warn">Readings were unsteady (±{result.spreadDeg.toFixed(1)}°) — try again</p>
-        {:else if Math.abs(result.offsetDeg) > BIG_CORRECTION_DEG}
+        {:else if Math.abs(change) > BIG_CORRECTION_DEG}
           <p class="warn">That's a big correction — check you aimed at {target.label}</p>
         {/if}
         <div class="actions">

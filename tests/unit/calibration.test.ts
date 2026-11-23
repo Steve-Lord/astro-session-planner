@@ -35,7 +35,23 @@ describe('BRIGHT_STARS', () => {
   });
 });
 
+const sunAltAt = (t: Date) => {
+  const e = A.Equator(A.Body.Sun, t, obs, true, true);
+  return A.Horizon(t, obs, e.ra, e.dec, 'normal').altitude;
+};
+
 describe('calibrationCandidates', () => {
+  it('offers at most the Moon at a London midday', () => {
+    for (const d of [Date.UTC(2026, 5, 15, 12), Date.UTC(2026, 11, 15, 12), Date.UTC(2026, 2, 20, 11)]) {
+      for (const c of calibrationCandidates(site, new Date(d))) expect(c.kind).toBe('moon');
+    }
+  });
+  it('offers stars once the Sun is below -6 deg, and none at twilight start', () => {
+    const night = calibrationCandidates(site, new Date(Date.UTC(2026, 11, 15, 20)));
+    expect(night.some((c) => c.kind === 'star')).toBe(true);
+    const bright = calibrationCandidates(site, new Date(Date.UTC(2026, 11, 15, 15, 30))); // Sun about 0 deg
+    expect(bright.every((c) => c.kind === 'moon')).toBe(true);
+  });
   it('keeps alt in 5..60, never offers the Sun, sorts Moon, planets, then stars by magnitude', () => {
     for (const h of [0, 4, 8, 12, 16, 20]) {
       const cs = calibrationCandidates(site, new Date(Date.UTC(2026, 10, 22, h)));
@@ -57,6 +73,7 @@ describe('calibrationCandidates', () => {
     for (let d = 0; d < 365 * 24 && !found; d += 3) {
       const t = new Date(Date.UTC(2026, 0, 1) + d * 3600e3);
       if (A.AngleFromSun(A.Body.Venus, t) >= 30) continue;
+      if (sunAltAt(t) >= -1) continue;
       const eq = A.Equator(A.Body.Venus, t, obs, true, true);
       const alt = A.Horizon(t, obs, eq.ra, eq.dec, 'normal').altitude;
       if (alt > 6 && alt < 59) found = t;
@@ -69,6 +86,7 @@ describe('calibrationCandidates', () => {
     for (let d = 0; d < 365 * 24 && !found; d += 3) {
       const t = new Date(Date.UTC(2026, 0, 1) + d * 3600e3);
       if (A.AngleFromSun(A.Body.Venus, t) < 35) continue;
+      if (sunAltAt(t) >= -1) continue;
       const eq = A.Equator(A.Body.Venus, t, obs, true, true);
       const alt = A.Horizon(t, obs, eq.ra, eq.dec, 'normal').altitude;
       if (alt > 6 && alt < 59) found = t;

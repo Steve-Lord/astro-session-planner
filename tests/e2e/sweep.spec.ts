@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { seedStorage } from './seed'
+import { seedStorage, seededState } from './seed'
 import { aim, stubSensors, trackStates } from './sensors-stub'
 import { calibrationCandidates } from '../../src/lib/sweep/calibration'
 import { declination } from '../../src/lib/sweep/geomag'
@@ -299,6 +299,72 @@ test.describe('Phone horizon sweep', () => {
       expect(h.calibration.residualAltDeg).toBeCloseTo(0, 1)
       expect(h.northOffsetDeg).toBeCloseTo(10, 1)
       expect(h.source).toBe('sweep')
+    })
+
+    test('calibrating again with the same readings changes nothing (+0.0°)', async ({ page }) => {
+      const { pick: t } = target()
+      const { editor, cal } = await openCalibrate(page)
+      const reading = t.az - 10 - DECL
+      const run = async () => {
+        await pick(page, cal, t.label, t.alt, reading)
+        await cal.getByRole('button', { name: 'Lock' }).click()
+        await aim(page, Array.from({ length: 15 }, () => [wrap(reading), t.alt] as [number, number]))
+      }
+      await run()
+      await expect(cal.getByText('North corrected by +10.0°; altitude reads 0.0° high')).toBeVisible()
+      await cal.getByRole('button', { name: 'Apply' }).click()
+      const at = async (az: number) => Number(await slider(page, az).getAttribute('aria-valuenow'))
+      expect([await at(100), await at(160)].map(Math.round)).toEqual([2, 30])
+
+      await editor.getByRole('button', { name: 'Calibrate north' }).click()
+      await run()
+      await expect(cal.getByText('North corrected by +0.0°; altitude reads 0.0° high')).toBeVisible()
+      await cal.getByRole('button', { name: 'Apply' }).click()
+      expect([await at(100), await at(160)].map(Math.round)).toEqual([2, 30])
+      await editor.getByRole('button', { name: 'Save horizon' }).click()
+      expect((await stored(page)).sites[0].horizon.northOffsetDeg).toBeCloseTo(10, 6)
+    })
+
+    test('imported and manual horizons offer no Calibrate button', async ({ page }) => {
+      for (const source of ['import', 'manual']) {
+        const s = seededState()
+        const altitudes = Array.from({ length: 360 }, (_, i) => (i >= 90 && i < 150 ? 30 : 2))
+        ;(s.sites[0] as { horizon: unknown }).horizon = {
+          altitudes, seasonal: new Array(360).fill(false), leafOffAltitudes: altitudes.slice(),
+          northOffsetDeg: 0, createdAt: '2026-11-01T00:00:00.000Z', source, calibration: null,
+        }
+        const p = await page.context().newPage()
+        await seedStorage(p, s)
+        await stubSensors(p, { testNow: CAL_NOW })
+        await p.goto('/#sites')
+        await p.getByRole('button', { name: 'Edit horizon' }).click()
+        const editor = p.getByRole('region', { name: 'Horizon for London' })
+        await expect(editor).toBeVisible()
+        await expect(editor.getByRole('button', { name: /Calibrate/ })).toHaveCount(0)
+        await p.close()
+      }
+    })
+
+    test('with no Moon visible by day the list says nothing is up, and Close leaves', async ({ page }) => {
+      // First hour of 2026 where nothing qualifies (Moon down or near the Sun, and no dark sky).
+      let t = Date.UTC(2026, 5, 1, 9)
+      while (calibrationCandidates(london as never, new Date(t)).length > 0) t += 3600e3
+      const st = seededState()
+      const altitudes = Array.from({ length: 360 }, (_, i) => (i >= 90 && i < 150 ? 30 : 2))
+      ;(st.sites[0] as { horizon: unknown }).horizon = {
+        altitudes, seasonal: new Array(360).fill(false), leafOffAltitudes: altitudes.slice(),
+        northOffsetDeg: 0, createdAt: '2026-11-01T00:00:00.000Z', source: 'sweep', calibration: null,
+      }
+      await seedStorage(page, st)
+      await stubSensors(page, { testNow: t })
+      await page.goto('/#sites')
+      await page.getByRole('button', { name: 'Edit horizon' }).click()
+      await page.getByRole('region', { name: 'Horizon for London' }).getByRole('button', { name: 'Calibrate north' }).click()
+      const cal = page.getByRole('dialog', { name: 'Calibrate north' })
+      await expect(cal.getByText('Nothing bright enough is up right now — try after dark.')).toBeVisible()
+      await expect(cal.getByRole('button', { name: /—/ })).toHaveCount(0)
+      await cal.getByRole('button', { name: 'Close' }).click()
+      await expect(cal).toHaveCount(0)
     })
 
     test('unsteady readings disable Apply and ask to try again; too few readings ask to hold steady', async ({ page }) => {

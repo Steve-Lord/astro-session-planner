@@ -40,6 +40,8 @@ export interface CalibrationCandidate {
 const MIN_ALT = 5
 const MAX_ALT = 60
 const MIN_SUN_SEP = 30
+/** Sun altitude below which each kind can be seen: stars and the dim planets need real dusk, Venus is seen in twilight, the Moon by day. */
+const MAX_SUN_ALT = { moon: Infinity, venus: 0, planet: -6, star: -6 }
 
 const BODIES: { id: string; label: string; body: A.Body; kind: 'moon' | 'planet' }[] = [
   { id: 'moon', label: 'Moon', body: A.Body.Moon, kind: 'moon' },
@@ -57,14 +59,16 @@ function separation(ra1: number, dec1: number, ra2: number, dec2: number): numbe
   return Math.acos(Math.max(-1, Math.min(1, c))) * R2D
 }
 
-/** Bright objects usable as a compass reference now: apparent (refracted) alt/az, 5-60 deg up, 30+ deg from the Sun. */
+/** Bright objects usable as a compass reference now: apparent (refracted) alt/az, 5-60 deg up, 30+ deg from the Sun, and dark enough to see (Moon any time; Venus Sun < 0 deg; others Sun < -6 deg). */
 export function calibrationCandidates(site: Site, at: Date): CalibrationCandidate[] {
   const obs = new A.Observer(site.lat, site.lon, site.elevation)
   const sun = A.Equator(A.Body.Sun, at, obs, true, true)
   const sunRa = sun.ra * 15
+  const sunAlt = A.Horizon(at, obs, sun.ra, sun.dec, 'normal').altitude
   const out: CalibrationCandidate[] = []
 
   const consider = (id: string, label: string, kind: CalibrationCandidate['kind'], raDeg: number, dec: number) => {
+    if (sunAlt >= (id === 'venus' ? MAX_SUN_ALT.venus : MAX_SUN_ALT[kind])) return
     if (separation(raDeg, dec, sunRa, sun.dec) < MIN_SUN_SEP) return
     const h = A.Horizon(at, obs, raDeg / 15, dec, 'normal')
     if (h.altitude < MIN_ALT || h.altitude > MAX_ALT) return
