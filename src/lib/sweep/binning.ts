@@ -12,6 +12,10 @@ const MIN_ALT = -10
 const MAX_ALT = 80
 const MAX_ACCURACY_DEG = 25
 const MAX_COMPASS_JUMP_DEG = 8
+/** Accepted samples over this span set the compass-minus-gyro baseline (median). */
+const BASELINE_WARMUP_MS = 2000
+/** Time constant of the baseline EMA afterwards: slow enough that a ramped disturbance cannot drag it along, fast enough to follow gyro drift. */
+const BASELINE_TAU_MS = 10_000
 
 /** Great-circle angle (degrees) between two (alt, az) directions. */
 function greatCircleDeg(alt1: number, az1: number, alt2: number, az2: number): number {
@@ -37,6 +41,10 @@ export class SweepAccumulator {
   private readonly bins: number[][] = Array.from({ length: 360 }, () => [])
   private prev: OrientationSample | null = null
   private accepted = 0
+  // Compass-minus-gyro offset (angDiff(azRel, azMag)). Warm-up offsets are stored relative to the first one.
+  private warm: { t0: number; first: number; rel: number[] } | null = null
+  private baseline: number | null = null
+  private lastAcceptedT = 0
 
   constructor(opts: { declinationDeg: number; offsetDeg?: number; maxRollDeg?: number; maxRateDegPerS?: number; maxGapFillDeg?: number }) {
     this.declinationDeg = opts.declinationDeg
@@ -53,6 +61,7 @@ export class SweepAccumulator {
     this.prev = s // speed / jump checks always compare against the previous *received* sample
     const reason = this.reject(s, prev)
     if (reason) return { accepted: false, reason }
+    this.track(s)
     const azTrue = wrap360(s.azMag + this.declinationDeg + this.offsetDeg)
     this.bins[Math.floor(azTrue) % 360].push(s.alt)
     this.accepted++
@@ -63,12 +72,51 @@ export class SweepAccumulator {
     if (s.alt < MIN_ALT || s.alt > MAX_ALT) return 'not-upright'
     if (Math.abs(s.roll) > this.maxRollDeg) return 'roll'
     if (s.compassAccuracy !== null && (s.compassAccuracy < 0 || s.compassAccuracy > MAX_ACCURACY_DEG)) return 'low-accuracy'
+    // Speed from the gyro (azRel): a compass jump must not read as the user turning fast.
     if (prev) {
       const dt = (s.t - prev.t) / 1000
-      if (dt > 0 && greatCircleDeg(prev.alt, prev.azMag, s.alt, s.azMag) / dt > this.maxRateDegPerS) return 'fast'
-      if (Math.abs(angDiff(prev.azMag, s.azMag) - angDiff(prev.azRel, s.azRel)) > MAX_COMPASS_JUMP_DEG) return 'compass-jump'
+      if (dt > 0 && greatCircleDeg(prev.alt, prev.azRel, s.alt, s.azRel) / dt > this.maxRateDegPerS) return 'fast'
     }
+    // Compass disturbance: the compass-minus-gyro offset strays from its slow baseline. Held or ramped
+    // shifts keep being rejected, because the baseline only learns from accepted samples.
+    const ref = this.reference()
+    if (ref !== null && Math.abs(angDiff(ref, angDiff(s.azRel, s.azMag))) > MAX_COMPASS_JUMP_DEG) return 'compass-jump'
     return null
+  }
+
+  /** Baseline offset, or during warm-up the median so far; null before the first accepted sample. */
+  private reference(): number | null {
+    if (this.baseline !== null) return this.baseline
+    if (!this.warm) return null
+    return this.warm.first + median(this.warm.rel)
+  }
+
+  /** Learns the baseline from an accepted sample. */
+  private track(s: OrientationSample): void {
+    const o = angDiff(s.azRel, s.azMag)
+    if (this.baseline !== null) {
+      const dt = Math.max(0, s.t - this.lastAcceptedT)
+      this.baseline += angDiff(this.baseline, o) * (1 - Math.exp(-dt / BASELINE_TAU_MS))
+    } else if (!this.warm) {
+      this.warm = { t0: s.t, first: o, rel: [0] }
+    } else {
+      this.warm.rel.push(angDiff(this.warm.first, o))
+      if (s.t - this.warm.t0 >= BASELINE_WARMUP_MS) {
+        this.baseline = this.warm.first + median(this.warm.rel)
+        this.warm = null
+      }
+    }
+    this.lastAcceptedT = s.t
+  }
+
+  /**
+   * Forgets the previous sample and the compass baseline (call on resume after a pause): the gyro
+   * reference restarts with the sensors, so the old offset no longer applies. Bins are kept.
+   */
+  resetReference(): void {
+    this.prev = null
+    this.warm = null
+    this.baseline = null
   }
 
   coverage(): { swept: number; total: 360; bins: boolean[] } {

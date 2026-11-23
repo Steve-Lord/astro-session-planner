@@ -137,15 +137,68 @@ describe('SweepAccumulator', () => {
     expect(r).toEqual({ accepted: false, reason: 'compass-jump' })
   })
 
-  it('compares against the previous received sample even when it was rejected', () => {
+  it('a 60 Hz compass jump while standing still is a compass-jump, not fast', () => {
     const acc = new SweepAccumulator({ declinationDeg: 0 })
-    acc.add(sample(10, 5, 0))
-    expect(acc.add(sample(50, 5, 10_000, { azRel: 11 })).accepted).toBe(false) // jump
-    // consistent with the (rejected) previous sample: not a jump
-    expect(acc.add(sample(51, 5, 11_000, { azRel: 12 })).accepted).toBe(true)
+    expect(acc.add(sample(10, 5, 0)).accepted).toBe(true)
+    expect(acc.add(sample(10, 5, 16)).accepted).toBe(true)
+    // The compass reads 40° further round 16 ms later; the gyro says the phone did not move.
+    expect(acc.add(sample(10, 5, 33, { azMag: 50 }))).toEqual({ accepted: false, reason: 'compass-jump' })
   })
 
-  it('rejects angular speed over 30°/s, using great-circle distance', () => {
+  it('keeps rejecting a held 15° compass shift, and accepts again once it ends', () => {
+    const acc = new SweepAccumulator({ declinationDeg: 0 })
+    let t = 0
+    let az = 10
+    const step = (over: (az: number) => Partial<OrientationSample> = () => ({})) => {
+      az += 0.2 // 12°/s at 60 Hz
+      t += 1000 / 60
+      return acc.add(sample(az, 5, t, over(az)))
+    }
+    for (let i = 0; i < 180; i++) expect(step().accepted).toBe(true) // 3 s: baseline set
+    for (let i = 0; i < 120; i++) expect(step((a) => ({ azMag: a + 15 }))).toEqual({ accepted: false, reason: 'compass-jump' })
+    expect(step().accepted).toBe(true)
+  })
+
+  it('rejects a slow ramp (12° over 1 s at 60 Hz) once it strays 8° from the baseline', () => {
+    const acc = new SweepAccumulator({ declinationDeg: 0 })
+    let t = 0
+    let az = 10
+    for (let i = 0; i < 180; i++) { az += 0.2; t += 1000 / 60; expect(acc.add(sample(az, 5, t)).accepted).toBe(true) }
+    const results: { shift: number; accepted: boolean }[] = []
+    for (let i = 1; i <= 120; i++) {
+      az += 0.2; t += 1000 / 60
+      const shift = Math.min(12, (12 * i) / 60) // +0.2° per sample for 1 s, then held at 12°
+      results.push({ shift, accepted: acc.add(sample(az, 5, t, { azMag: az + shift })).accepted })
+    }
+    // Every sample more than 8.5° off is rejected (the baseline may have crept ≲0.5° towards it).
+    for (const r of results) if (r.shift > 8.5) expect(r.accepted).toBe(false)
+    expect(results.filter((r) => r.shift <= 7).every((r) => r.accepted)).toBe(true)
+  })
+
+  it('follows slow gyro drift without rejecting', () => {
+    const acc = new SweepAccumulator({ declinationDeg: 0 })
+    let t = 0
+    // azRel drifts 10° per minute relative to the compass over a 90 s sweep.
+    for (let i = 0; i < 90 * 60; i++) {
+      t += 1000 / 60
+      const az = (i * 4) / 60 // 4°/s
+      expect(acc.add(sample(az, 5, t, { azRel: az + (10 * t) / 60_000 })).accepted).toBe(true)
+    }
+  })
+
+  it('resetReference forgets the baseline and the previous sample but keeps the bins', () => {
+    const acc = new SweepAccumulator({ declinationDeg: 0 })
+    let t = 0
+    for (let i = 0; i < 180; i++) { t += 1000 / 60; acc.add(sample(10 + i * 0.1, 5, t)) }
+    const swept = acc.coverage().swept
+    acc.resetReference()
+    // After a resume the gyro frame has moved 70° and the sample comes right after: neither fast nor a jump.
+    expect(acc.add(sample(30, 5, t + 1, { azRel: 100 })).accepted).toBe(true)
+    expect(acc.add(sample(30.1, 5, t + 17, { azRel: 100.1 })).accepted).toBe(true)
+    expect(acc.coverage().swept).toBeGreaterThanOrEqual(swept)
+  })
+
+  it('rejects angular speed over 30°/s from the gyro, using great-circle distance', () => {
     const acc = new SweepAccumulator({ declinationDeg: 0 })
     acc.add(sample(10, 5, 0))
     expect(acc.add(sample(15, 5, 100)).accepted).toBe(false) // 50°/s
@@ -170,7 +223,7 @@ describe('SweepAccumulator', () => {
     expect(acc.add(all)).toEqual({ accepted: false, reason: 'not-upright' })
     expect(acc.add({ ...all, alt: 5, t: 20 })).toEqual({ accepted: false, reason: 'roll' })
     expect(acc.add({ ...all, alt: 5, roll: 0, t: 30 })).toEqual({ accepted: false, reason: 'low-accuracy' })
-    expect(acc.add({ ...all, alt: 5, roll: 0, compassAccuracy: 5, azMag: 200, azRel: 90, t: 40 })).toEqual({ accepted: false, reason: 'fast' })
+    expect(acc.add({ ...all, alt: 5, roll: 0, compassAccuracy: 5, azMag: 300, azRel: 100, t: 40 })).toEqual({ accepted: false, reason: 'fast' })
     expect(acc.add({ ...all, alt: 5, roll: 0, compassAccuracy: 5, azMag: 300, azRel: 90, t: 100_000 })).toEqual({ accepted: false, reason: 'compass-jump' })
   })
 

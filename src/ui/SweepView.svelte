@@ -105,6 +105,8 @@
       if (!acc) {
         decl = declination(site.lat, site.lon, site.elevation / 1000, now())
         acc = new SweepAccumulator({ declinationDeg: decl })
+      } else {
+        acc.resetReference() // resumed: the gyro frame restarted, so learn the compass baseline afresh
       }
       // Any reading with real angles proves a sensor (on iOS azMag can lag until the phone is upright).
       let heard = false
