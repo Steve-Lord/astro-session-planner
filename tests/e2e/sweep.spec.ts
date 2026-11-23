@@ -290,6 +290,30 @@ test.describe('Phone horizon sweep', () => {
     await expect.poll(() => trackStates(page)).toEqual(['ended', 'ended'])
   })
 
+  test('Pause shows the paused card and releases the camera; Resume continues sampling', async ({ page }) => {
+    await seedStorage(page)
+    await stubSensors(page, { testNow: TEST_NOW })
+    await startSweep(page)
+    await aim(page, headings(1, 50).map((h) => [h, 5] as [number, number]))
+    const sweep = page.getByRole('dialog', { name: 'Horizon sweep' })
+    const count = (await sweep.getByText(/^\d+\/360$/).textContent())!
+
+    await sweep.getByRole('button', { name: 'Pause' }).click()
+    await expect(sweep).toHaveCount(0)
+    await expect(page.getByText(`Sweep paused — ${count} swept.`)).toBeVisible()
+    await expect.poll(() => trackStates(page)).toEqual(['ended'])
+
+    await page.getByRole('button', { name: 'Resume' }).click()
+    await expect(sweep.getByText(count, { exact: true })).toBeVisible()
+    // Sampling continues after Resume (the orientation listener starts once the camera is up).
+    await expect(async () => {
+      await aim(page, headings(50, 100).map((h) => [h, 5] as [number, number]))
+      await expect(sweep.getByText(count, { exact: true })).toHaveCount(0, { timeout: 200 })
+    }).toPass()
+    const after = Number((await sweep.getByText(/^\d+\/360$/).textContent())!.split('/')[0])
+    expect(after).toBeGreaterThan(Number(count.split('/')[0]) + 30)
+  })
+
   test('Done and Cancel release the camera', async ({ page }) => {
     page.on('dialog', (d) => void d.accept())
     await seedStorage(page)

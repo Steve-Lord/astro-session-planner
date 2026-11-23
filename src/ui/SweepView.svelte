@@ -24,7 +24,7 @@
     'not-upright': 'Hold the phone upright, camera at the skyline',
     roll: 'Keep the phone level — don’t tilt it sideways',
     fast: 'Slow down',
-    'compass-jump': 'Compass disturbed — move away from metal',
+    'compass-jump': 'Compass disturbed — move away from metal, then tap Pause and Resume',
     'low-accuracy': 'Compass needs calibrating — wave the phone in a figure-8',
   }
   const STATUS_MS = 1500
@@ -229,6 +229,7 @@
 
     <div class="buttons">
       <button type="button" class="primary" onclick={done}>Done</button>
+      <button type="button" onclick={pause}>Pause</button>
       <button type="button" onclick={cancel}>Cancel</button>
     </div>
 
