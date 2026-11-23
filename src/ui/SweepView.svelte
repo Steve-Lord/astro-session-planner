@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte'
+  import { onDestroy, onMount, tick } from 'svelte'
   import { SweepAccumulator, type Rejection } from '../lib/sweep/binning'
   import { declination } from '../lib/sweep/geomag'
   import { wrap360, type OrientationSample } from '../lib/sweep/orientation'
@@ -93,7 +93,7 @@
       running = true
       await tick()
       try {
-        const stop = await startCamera(video)
+        const stop = await startCamera(video, pause)
         if (my !== session) return stop()
         stopCamera = stop
       } catch (e) {
@@ -136,12 +136,24 @@
     status = null
   }
 
+  /** Stops sensors and camera but keeps the accumulator; the user resumes with a tap. */
+  function pause(): void {
+    if (!running) return
+    teardown()
+    paused = true
+  }
+
   // Leaving the Sites tab (or an import dialog opening) pauses a running sweep.
   $effect(() => {
-    if (!active && running) {
-      teardown()
-      paused = true
-    }
+    if (!active && running) pause()
+  })
+
+  // So does the page being hidden (a call, another app, the lock screen); the camera track ended by the
+  // browser pauses via startCamera's onended.
+  onMount(() => {
+    const onVisibility = () => { if (document.visibilityState === 'hidden') pause() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   })
 
   function done(): void {

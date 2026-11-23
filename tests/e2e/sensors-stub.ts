@@ -89,3 +89,19 @@ export async function aim(page: Page, points: [heading: number, alt: number][]):
 export function trackStates(page: Page): Promise<string[]> {
   return page.evaluate(() => window.__streams.flatMap((st) => st.getTracks().map((t) => t.readyState)))
 }
+
+/** Fakes the page being hidden (a call, another app) or shown again, and fires `visibilitychange`. */
+export async function setHidden(page: Page, hidden: boolean): Promise<void> {
+  await page.evaluate((h) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') })
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => h })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, hidden)
+}
+
+/** Fires `ended` on the live camera tracks, as when the browser or another app takes the camera. */
+export async function endCamera(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const st of window.__streams) for (const t of st.getTracks()) if (t.readyState === 'live') t.dispatchEvent(new Event('ended'))
+  })
+}

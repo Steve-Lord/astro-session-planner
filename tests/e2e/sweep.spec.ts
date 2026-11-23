@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { seedStorage, seededState } from './seed'
-import { aim, stubSensors, trackStates } from './sensors-stub'
+import { aim, endCamera, setHidden, stubSensors, trackStates } from './sensors-stub'
 import { calibrationCandidates } from '../../src/lib/sweep/calibration'
 import { declination } from '../../src/lib/sweep/geomag'
 
@@ -237,6 +237,29 @@ test.describe('Phone horizon sweep', () => {
     await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible()
   })
 
+  test('a hidden page or an ended camera track pauses the sweep; Resume keeps progress', async ({ page }) => {
+    await seedStorage(page)
+    await stubSensors(page, { testNow: TEST_NOW })
+    await startSweep(page)
+    await aim(page, headings(1, 50).map((h) => [h, 5] as [number, number]))
+    const sweep = page.getByRole('dialog', { name: 'Horizon sweep' })
+    const count = (await sweep.getByText(/^\d+\/360$/).textContent())!
+
+    await setHidden(page, true)
+    await expect(sweep).toHaveCount(0)
+    await expect.poll(() => trackStates(page)).toEqual(['ended'])
+    await aim(page, headings(50, 150).map((h) => [h, 5] as [number, number])) // ignored while paused
+    await setHidden(page, false)
+    await expect(page.getByText(`Sweep paused — ${count} swept.`)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Resume' }).click()
+    await expect(sweep.getByText(count, { exact: true })).toBeVisible()
+    await endCamera(page)
+    await expect(sweep).toHaveCount(0)
+    await expect(page.getByText(`Sweep paused — ${count} swept.`)).toBeVisible()
+    await expect.poll(() => trackStates(page)).toEqual(['ended', 'ended'])
+  })
+
   test('Done and Cancel release the camera', async ({ page }) => {
     page.on('dialog', (d) => void d.accept())
     await seedStorage(page)
@@ -436,6 +459,20 @@ test.describe('Phone horizon sweep', () => {
       await aim(page, Array.from({ length: 12 }, () => [wrap(reading), t.alt] as [number, number]))
       await expect(cal.getByText(`That's a big correction — check you aimed at ${t.label}`)).toBeVisible()
       await expect(cal.getByRole('button', { name: 'Apply' })).toBeEnabled()
+    })
+
+    test('a hidden page or an ended camera track pauses calibration and releases the camera', async ({ page }) => {
+      const { pick: t } = target()
+      const { cal } = await openCalibrate(page)
+      await pick(page, cal, t.label, t.alt, t.az - DECL)
+      await setHidden(page, true)
+      await expect.poll(() => trackStates(page)).toEqual(['ended', 'ended'])
+      await setHidden(page, false)
+      await expect(cal.getByText('Paused — pick the object again to continue.')).toBeVisible()
+      await pick(page, cal, t.label, t.alt, t.az - DECL)
+      await endCamera(page)
+      await expect(cal.getByText('Paused — pick the object again to continue.')).toBeVisible()
+      await expect.poll(() => trackStates(page)).toEqual(['ended', 'ended', 'ended'])
     })
 
     test('leaving the tab pauses calibration and releases the camera; Close releases it too', async ({ page }) => {

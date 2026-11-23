@@ -78,7 +78,14 @@
     const timer = setInterval(() => {
       if (active && phase === 'pick') candidates = calibrationCandidates(site, now())
     }, REFRESH_MS)
-    return () => clearInterval(timer)
+    // A hidden page (a call, another app, the lock screen) pauses like leaving the tab; so does the
+    // browser ending the camera track (startCamera's onended).
+    const onVisibility = () => { if (document.visibilityState === 'hidden') pause() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   })
 
   function onSample(s: OrientationSample): void {
@@ -105,7 +112,7 @@
       phase = 'aim'
       await tick()
       try {
-        const stop = await startCamera(video)
+        const stop = await startCamera(video, pause)
         if (my !== session) return stop()
         stopCamera = stop
       } catch (e) {
@@ -196,13 +203,17 @@
     onclose()
   }
 
+  /** Stops camera and sensors and returns to the list with a notice. */
+  function pause(): void {
+    if (phase === 'pick') return
+    teardown()
+    candidates = calibrationCandidates(site, now())
+    notice = 'Paused — pick the object again to continue.'
+  }
+
   // Leaving the Sites tab (or an import dialog opening) stops the sensors.
   $effect(() => {
-    if (!active && phase !== 'pick') {
-      teardown()
-      candidates = calibrationCandidates(site, now())
-      notice = 'Paused — pick the object again to continue.'
-    }
+    if (!active && phase !== 'pick') pause()
   })
 
   onDestroy(teardown)

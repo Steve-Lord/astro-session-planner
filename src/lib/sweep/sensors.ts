@@ -37,12 +37,21 @@ export function now(): Date {
   return typeof t === 'number' ? new Date(t) : new Date()
 }
 
-/** Rear camera into `video` (muted, inline). Resolves to a stop function; rejects with the getUserMedia error. */
-export async function startCamera(video: HTMLVideoElement | null | undefined): Promise<() => void> {
+/**
+ * Rear camera into `video` (muted, inline). Resolves to a stop function; rejects with the getUserMedia error.
+ * `onended` runs if the browser ends the camera track itself (another app took the camera, iOS suspended
+ * the page); calling stop does not trigger it.
+ */
+export async function startCamera(video: HTMLVideoElement | null | undefined, onended?: () => void): Promise<() => void> {
   if (!video) throw new DOMException('No video element to show the camera in', 'InvalidStateError')
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+  const ended = () => onended?.()
+  for (const t of stream.getTracks()) t.addEventListener('ended', ended)
   const stop = () => {
-    for (const t of stream.getTracks()) t.stop()
+    for (const t of stream.getTracks()) {
+      t.removeEventListener('ended', ended)
+      t.stop()
+    }
     if (video.srcObject === stream) video.srcObject = null
   }
   try {
