@@ -21,9 +21,13 @@ export interface TimeWindow { start: number; end: number; }   // epoch ms
 export type FitLabel = 'too-small' | 'good' | 'tight' | 'mosaic' | 'size-unknown';
 export interface Fit { label: FitLabel; fill: number | null; panels: [number, number] | null; }
 export type HiddenReason = 'blocked' | 'too-small' | 'too-faint';
+export type HiddenCause = 'no-dark' | 'never-rises' | 'never-clears' | 'short-gaps' | 'too-small' | 'too-faint';
 export interface ScoreBreakdown { hours: number; altitude: number; fit: number; contrast: number; moon: number; }
 export interface PlanEntry { target: Target; windows: TimeWindow[]; totalHours: number; best: TimeWindow; peakAlt: number;
   fit: Fit; contrastMag: number | null; minMoonSepDeg: number | null; score: number; breakdown: ScoreBreakdown; }
+export type TargetVerdict =
+  | { kind: 'entry'; entry: PlanEntry }
+  | { kind: 'hidden'; reason: HiddenReason; cause: HiddenCause; fill: number | null; contrastMag: number | null };
 export interface NightPlan { siteId: string; date: string; darkWindow: TimeWindow | null; darkSunAltUsed: -18 | -12;
   noAstroDark: boolean; moon: { illumination: number; rise: number | null; set: number | null };
   entries: PlanEntry[]; hidden: Record<HiddenReason, Target[]>; }

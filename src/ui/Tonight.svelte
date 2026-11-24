@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import { appState, loadError, ui } from '../lib/store/state.svelte'
   import { currentPlatform, needsInstallHint } from '../lib/platform'
   import { loadCatalog } from '../lib/catalog/load'
@@ -8,6 +8,8 @@
   import type { Gear, NightPlan, Site, Target } from '../lib/types'
   import TargetRow from './TargetRow.svelte'
   import HiddenList from './HiddenList.svelte'
+  import TargetDetail from './TargetDetail.svelte'
+  import { parseDetailHash } from '../lib/detailHash'
 
   const PAGE = 50
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -26,6 +28,39 @@
   let runError = $state<string | null>(null)
   let reqId = 0
 
+  // Detail screen: the list stays mounted (hidden) so its scroll and plan survive.
+  let detailId = $state<string | null>(parseDetailHash(location.hash)?.id ?? null)
+  let openedInApp = false
+  let savedScroll = 0
+
+  function syncDetail(first: boolean): void {
+    const d = parseDetailHash(location.hash)
+    if (d) {
+      if (d.date && (first || d.date !== date)) { date = d.date; datePicked = true }
+      if (detailId === null) {
+        savedScroll = window.scrollY
+        openedInApp = !first
+        tick().then(() => window.scrollTo(0, 0))
+      }
+      detailId = d.id
+    } else if (detailId !== null) {
+      detailId = null
+      if (location.hash === '' || location.hash === '#tonight') tick().then(() => window.scrollTo(0, savedScroll))
+    }
+  }
+
+  function closeDetail(): void {
+    if (openedInApp) history.back()
+    else location.hash = '#tonight'
+  }
+
+  onMount(() => {
+    syncDetail(true)
+    const onHash = () => syncDetail(false)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  })
+
   onMount(() => {
     loadCatalog('./catalog.json').then(
       (c) => (catalog = c),
@@ -36,7 +71,8 @@
   // Initial date: ?date= param, else tonight at the site.
   $effect(() => {
     if (date || !site) return
-    const q = new URLSearchParams(location.search).get('date')
+    const hashDate = parseDetailHash(location.hash)?.date ?? null
+    const q = hashDate ?? new URLSearchParams(location.search).get('date')
     datePicked = !!(q && DATE_RE.test(q))
     date = q && DATE_RE.test(q) ? q : tonight(site.timezone)
   })
@@ -90,6 +126,20 @@
     if (g && !g.filters.some((f) => f.id === appState.selectedFilterId)) appState.selectedFilterId = g.filters[0]?.id ?? ''
   }
 
+  const detailTarget = $derived.by(() => {
+    if (detailId === null || !catalog) return undefined
+    return catalog.find((t) => t.id === detailId) ?? appState.customTargets.find((t) => t.id === detailId) ?? null
+  })
+  const detailInput = $derived(site && gear && DATE_RE.test(date)
+    ? {
+        site: $state.snapshot(site) as Site,
+        gear: $state.snapshot(gear) as Gear,
+        filterId: appState.selectedFilterId,
+        settings: $state.snapshot(appState.settings),
+        date,
+      }
+    : null)
+
   const dateLabel = $derived.by(() => {
     if (!DATE_RE.test(date)) return ''
     return new Date(date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -138,6 +188,7 @@
   {#if !site}
     <p>No site yet. <a href="#sites">Add a site</a> to see tonight's targets.</p>
   {:else}
+    {#if detailId === null}
     {#if site.horizon === null}
       <div class="banner warn" role="status">
         <span>No horizon set for this site — obstructions are ignored.
@@ -167,7 +218,17 @@
         <span class="datelabel">{dateLabel}</span>
       </div>
     </section>
+    {/if}
 
+    {#if detailId !== null}
+      {#if detailTarget === undefined || !detailInput}
+        <p class="status" role="status">Loading…</p>
+      {:else}
+        <TargetDetail target={detailTarget} input={detailInput} onback={closeDetail} />
+      {/if}
+    {/if}
+
+    <div hidden={detailId !== null}>
     {#if planning}
       <p class="status" role="status">Planning…</p>
     {:else if plan}
@@ -182,7 +243,7 @@
       {:else}
         <ol class="entries">
           {#each plan.entries.slice(0, shown) as e, i (e.target.id)}
-            <TargetRow entry={e} rank={i + 1} timezone={site.timezone} />
+            <TargetRow entry={e} rank={i + 1} timezone={site.timezone} {date} />
           {/each}
         </ol>
         {#if plan.entries.length > shown}
@@ -191,13 +252,14 @@
       {/if}
       <section class="hidden" aria-label="Hidden targets">
         <h2>Hidden</h2>
-        <HiddenList label="Blocked / low" targets={plan.hidden.blocked} />
-        <HiddenList label="Too small" targets={plan.hidden['too-small']} />
-        <HiddenList label="Too faint" targets={plan.hidden['too-faint']} />
+        <HiddenList label="Blocked / low" targets={plan.hidden.blocked} {date} />
+        <HiddenList label="Too small" targets={plan.hidden['too-small']} {date} />
+        <HiddenList label="Too faint" targets={plan.hidden['too-faint']} {date} />
       </section>
     {:else if !runError}
       <p class="status" role="status">Planning…</p>
     {/if}
+    </div>
   {/if}
 </main>
 

@@ -19,7 +19,7 @@ export function nightBounds(date: string, timezone: string): TimeWindow {
  * Span within nightBounds during which the Sun is below `sunAlt`; null if never.
  * If the Sun is already below at window start (or still below at end) the span is clamped.
  */
-export function darkWindow(site: Site, date: string, sunAlt: -18 | -12): TimeWindow | null {
+export function darkWindow(site: Site, date: string, sunAlt: number): TimeWindow | null {
   const b = nightBounds(date, site.timezone)
   const obs = new A.Observer(site.lat, site.lon, site.elevation)
   const days = (b.end - b.start) / 86400000

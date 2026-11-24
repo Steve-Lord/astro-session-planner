@@ -17,7 +17,8 @@
   ] as const
   type Tab = (typeof TABS)[number]['id']
 
-  const fromHash = (): Tab => TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight'
+  // #target=… (a target's detail screen) lives inside the Tonight tab.
+  const fromHash = (): Tab => (location.hash.startsWith('#target=') ? 'tonight' : TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight')
   let tab = $state<Tab>(fromHash())
   // Hidden debug screen (not in the tab bar) for checking device-orientation behaviour on a phone.
   const isProbe = () => location.hash === '#sensor-probe'

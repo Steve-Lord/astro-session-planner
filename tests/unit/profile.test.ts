@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flatProfile, heightAt, frameClears, setRange } from '../../src/lib/horizon/profile';
+import { flatProfile, heightAt, frameClears, setRange, neededHeight } from '../../src/lib/horizon/profile';
 
 describe('flatProfile', () => {
   it('is all zeros, manual source, length 360', () => {
@@ -129,5 +129,17 @@ describe('frameClears', () => {
   it('treats a null profile as height 0', () => {
     expect(frameClears(null, false, 5, 100, 1.4, 2)).toBe(true);
     expect(frameClears(null, false, 3, 100, 1.4, 2)).toBe(false);
+  });
+});
+
+describe('neededHeight', () => {
+  it('agrees with frameClears', () => {
+    const p = flatProfile();
+    for (let a = 0; a < 360; a++) p.altitudes[a] = a < 90 ? 0 : a < 270 ? 35 : 20;
+    for (let alt = 0; alt <= 88; alt += 0.5) {
+      for (let az = 0; az < 360; az += 7) {
+        expect(frameClears(p, false, alt, az, 1.4, 2)).toBe(alt >= neededHeight(p, false, alt, az, 1.4, 2));
+      }
+    }
   });
 });

@@ -22,9 +22,13 @@ export interface NightContext {
   moon: MoonSample[]
 }
 
-export function buildContext(
-  site: Site, gear: Gear, settings: Settings, date: string,
-): { ctx: NightContext | null; darkSunAltUsed: -18 | -12; noAstroDark: boolean } {
+/**
+ * The dark window the planner uses: Sun below -18° (or -12° when settings ask for it), falling back
+ * to -12° on nights with no astronomical darkness.
+ */
+export function pickDarkWindow(
+  site: Site, date: string, settings: Settings,
+): { dark: TimeWindow | null; darkSunAltUsed: -18 | -12; noAstroDark: boolean } {
   const astro = darkWindow(site, date, -18)
   const noAstroDark = astro === null
   let darkSunAltUsed: -18 | -12 = settings.darkSunAlt
@@ -38,6 +42,13 @@ export function buildContext(
   } else {
     dark = darkWindow(site, date, -12)
   }
+  return { dark, darkSunAltUsed, noAstroDark }
+}
+
+export function buildContext(
+  site: Site, gear: Gear, settings: Settings, date: string,
+): { ctx: NightContext | null; darkSunAltUsed: -18 | -12; noAstroDark: boolean } {
+  const { dark, darkSunAltUsed, noAstroDark } = pickDarkWindow(site, date, settings)
   if (!dark) return { ctx: null, darkSunAltUsed, noAstroDark }
 
   const times: number[] = []

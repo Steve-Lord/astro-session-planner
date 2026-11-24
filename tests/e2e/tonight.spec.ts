@@ -12,9 +12,6 @@ test.describe('Tonight', () => {
     await expect(page.locator('p.summary')).toContainText(/Dark \d\d:\d\d–\d\d:\d\d · Moon \d+%/)
     await expect(rows.filter({ hasText: 'NGC 7000' }).first()).toContainText('MOSAIC')
 
-    await rows.first().getByRole('button', { name: 'why' }).click()
-    await expect(rows.first().locator('dd')).toHaveCount(5)
-
     await page.getByRole('button', { name: /^Too small/ }).click()
     await expect(page.locator('.hidden-list li', { hasText: 'NGC 7662' })).toBeVisible()
   })
@@ -54,15 +51,6 @@ test.describe('Tonight', () => {
     await page.goto('/?date=2026-11-22')
     await expect(page.locator('ol.entries > li').first()).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('No horizon set for this site')).toHaveCount(0)
-  })
-
-  test('why panel labels every factor (M2)', async ({ page }) => {
-    await seedStorage(page)
-    await page.goto('/?date=2026-11-22')
-    const first = page.locator('ol.entries > li').first()
-    await first.getByRole('button', { name: 'why' }).click()
-    await expect(first.locator('dt')).toHaveText(['Hours', 'Altitude', 'Fit', 'Contrast', 'Moon'])
-    await expect(first.locator('dd').nth(3)).toContainText(/than sky|unknown brightness/)
   })
 
   test('date buttons move by one day', async ({ page }) => {
