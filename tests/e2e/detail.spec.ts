@@ -96,6 +96,19 @@ test.describe('Target detail', () => {
     await expect(frame.locator('rect.panel')).toHaveCount(2)
     await expect(frame.locator('ellipse.object')).toHaveCount(1)
     await expect(frame.locator('.caption')).toHaveText(/^MOSAIC 1×2 · field \d+′×\d+′ · orientation unknown$/)
+    await expect(frame.locator('text.panel-no')).toHaveText(['1', '2'])
+    const g = await frame.evaluate((el) => {
+      const n = (e: Element, a: string) => Number(e.getAttribute(a))
+      const rs = [...el.querySelectorAll('rect.panel')].map((r) => ({ x: n(r, 'x'), y: n(r, 'y'), w: n(r, 'width'), h: n(r, 'height') }))
+      const e = el.querySelector('ellipse.object')!
+      return { rs, cx: n(e, 'cx'), cy: n(e, 'cy'), rx: n(e, 'rx'), ry: n(e, 'ry') }
+    })
+    const ux0 = Math.min(...g.rs.map((r) => r.x)), ux1 = Math.max(...g.rs.map((r) => r.x + r.w))
+    const uy0 = Math.min(...g.rs.map((r) => r.y)), uy1 = Math.max(...g.rs.map((r) => r.y + r.h))
+    expect(g.cx - g.rx).toBeGreaterThanOrEqual(ux0 - 0.5)
+    expect(g.cx + g.rx).toBeLessThanOrEqual(ux1 + 0.5)
+    expect(g.cy - g.ry).toBeGreaterThanOrEqual(uy0 - 0.5)
+    expect(g.cy + g.ry).toBeLessThanOrEqual(uy1 + 0.5)
 
     const box = (await chart.boundingBox())!
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
@@ -137,5 +150,40 @@ test.describe('Target detail', () => {
     await expect(page.locator('svg[aria-label="Altitude through the night"]')).toBeVisible()
     await expect(page.locator('.frame-preview svg')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
+  test('controls are hidden while a detail is open', async ({ page }) => {
+    await openNgc7000(page)
+    await expect(page.getByLabel('Date')).toBeHidden()
+    await expect(page.getByLabel('Site')).toBeHidden()
+    await expect(page.getByLabel('Gear')).toBeHidden()
+    await page.getByRole('button', { name: '‹ Tonight' }).click()
+    await expect(page.getByLabel('Date')).toBeVisible()
+    await expect(page.getByLabel('Site')).toBeVisible()
+  })
+
+  test('M31 caption states the catalogued PA', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/#target=NGC0224&date=2026-11-22')
+    await expect(page.locator('.frame-preview .caption')).toHaveText(/PA 35°, not drawn$/, { timeout: 60_000 })
+  })
+
+  test('opening a detail and going back does not pin the date', async ({ page }) => {
+    const t1 = Date.UTC(2026, 10, 22, 20)
+    await page.clock.setFixedTime(t1)
+    await seedStorage(page)
+    await page.goto('/')
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-22')
+    const row = page.locator('ol.entries > li').first()
+    await expect(row).toBeVisible({ timeout: 60_000 })
+    await row.getByRole('link').first().click()
+    await expect(page.locator('.detail')).toBeVisible()
+    await page.getByRole('button', { name: '‹ Tonight' }).click()
+    await page.clock.setFixedTime(t1 + 24 * 3600_000)
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
   })
 })

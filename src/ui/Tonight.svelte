@@ -36,7 +36,7 @@
   function syncDetail(first: boolean): void {
     const d = parseDetailHash(location.hash)
     if (d) {
-      if (d.date) { date = d.date; datePicked = true }
+      if (d.date && (first || d.date !== date)) { date = d.date; datePicked = true }
       if (detailId === null) {
         savedScroll = window.scrollY
         openedInApp = !first
@@ -188,6 +188,7 @@
   {#if !site}
     <p>No site yet. <a href="#sites">Add a site</a> to see tonight's targets.</p>
   {:else}
+    {#if detailId === null}
     {#if site.horizon === null}
       <div class="banner warn" role="status">
         <span>No horizon set for this site — obstructions are ignored.
@@ -217,6 +218,7 @@
         <span class="datelabel">{dateLabel}</span>
       </div>
     </section>
+    {/if}
 
     {#if detailId !== null}
       {#if detailTarget === undefined || !detailInput}

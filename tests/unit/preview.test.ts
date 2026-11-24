@@ -17,7 +17,7 @@ describe('framePreview', () => {
     expect(p.frameH).toBeCloseTo(82.8, 1);
   });
 
-  it('M31 mosaic uses the fit panels and a rotated ellipse', () => {
+  it('M31 mosaic uses the fit panels and an unrotated ellipse', () => {
     const m31 = target(178, 70, 35);
     const fit = frameFit(m31, g, 0.05);
     const p = framePreview(m31, g, fit);
@@ -25,8 +25,7 @@ describe('framePreview', () => {
     expect(p.rows).toBe(fit.panels![1]);
     expect(p.gridW).toBeGreaterThanOrEqual(178);
     expect(p.ellipse).not.toBeNull();
-    expect(p.ellipse!.rotateDeg).toBe(55);
-    expect(p.orientationKnown).toBe(true);
+    expect(p.posAngle).toBe(35);
     expect(p.ellipse!.rx).toBe(89);
     expect(p.ellipse!.ry).toBe(35);
   });
@@ -51,8 +50,7 @@ describe('framePreview', () => {
   it('NGC 7000 without position angle is unoriented', () => {
     const n7000 = target(120, 100, null);
     const p = framePreview(n7000, g, frameFit(n7000, g, 0.05));
-    expect(p.ellipse!.rotateDeg).toBe(0);
-    expect(p.orientationKnown).toBe(false);
+    expect(p.posAngle).toBeNull();
     expect(p.ellipse!.ry).toBe(50);
   });
 
@@ -72,13 +70,11 @@ describe('framePreview', () => {
     expect(p.rows).toBe(1);
   });
 
-  it('maps position angle to rotation north up, east left', () => {
-    const rot = (pa: number) => {
-      const t = target(10, 5, pa);
-      return framePreview(t, g, frameFit(t, g, 0.05)).ellipse!.rotateDeg;
-    };
-    expect(rot(90)).toBe(0);
-    expect(rot(0)).toBe(90);
-    expect(rot(170)).toBe(100);
+  it('M31 ellipse, unrotated, fits within the mosaic grid (as frameFit assumes)', () => {
+    const m31 = target(178, 70, 35);
+    const p = framePreview(m31, g, frameFit(m31, g, 0.05));
+    expect(2 * p.ellipse!.rx).toBeLessThanOrEqual(p.gridW);
+    expect(2 * p.ellipse!.ry).toBeLessThanOrEqual(p.gridH);
+    expect('rotateDeg' in p.ellipse!).toBe(false);
   });
 });

@@ -11,10 +11,9 @@
   const geom = $derived.by(() => {
     const p = preview
     const e = p.ellipse
-    const th = ((e?.rotateDeg ?? 0) * Math.PI) / 180
-    // Half-extents of the rotated ellipse's bounding box, so a large object never spills out of the view.
-    const hx = e ? Math.hypot(e.rx * Math.cos(th), e.ry * Math.sin(th)) : 0
-    const hy = e ? Math.hypot(e.rx * Math.sin(th), e.ry * Math.cos(th)) : 0
+    // Unrotated, so a large object never spills out of the view.
+    const hx = e ? e.rx : 0
+    const hy = e ? e.ry : 0
     const extW = Math.max(p.gridW, 2 * hx)
     const extH = Math.max(p.gridH, 2 * hy)
     const s = Math.min((VB_W - 2 * PAD) / extW, (MAX_H - 2 * PAD) / extH)
@@ -36,7 +35,7 @@
 
   const caption = $derived(
     `${preview.ellipse === null ? 'size unknown' : fitText} · field ${Math.round(preview.frameW)}′×${Math.round(preview.frameH)}′` +
-      (preview.orientationKnown ? '' : ' · orientation unknown'),
+      (preview.posAngle === null ? ' · orientation unknown' : ` · PA ${preview.posAngle}°, not drawn`),
   )
 </script>
 
@@ -45,9 +44,13 @@
     {#each geom.panels as p, i (i)}
       <rect class="panel" x={p.x} y={p.y} width={geom.fw} height={geom.fh} />
     {/each}
+    {#if geom.panels.length > 1}
+      {#each geom.panels as p, i (i)}
+        <text class="panel-no" x={p.x + 6} y={p.y + 16}>{i + 1}</text>
+      {/each}
+    {/if}
     {#if preview.ellipse}
-      <ellipse class="object" cx={geom.cx} cy={geom.cy} rx={preview.ellipse.rx * geom.s} ry={preview.ellipse.ry * geom.s}
-        transform="rotate({preview.ellipse.rotateDeg} {geom.cx} {geom.cy})" />
+      <ellipse class="object" cx={geom.cx} cy={geom.cy} rx={preview.ellipse.rx * geom.s} ry={preview.ellipse.ry * geom.s} />
     {/if}
   </svg>
   <p class="caption">{caption}</p>
@@ -56,7 +59,8 @@
 <style>
   figure { margin: 0 0 12px; }
   svg { display: block; width: 100%; max-width: 560px; height: auto; }
-  .panel { fill: rgba(255, 255, 255, 0.03); stroke: #9aa0ae; stroke-width: 1.2; }
+  .panel { fill: rgba(255, 255, 255, 0.09); stroke: #9aa0ae; stroke-width: 1.2; }
+  .panel-no { fill: #c9cdd6; font-size: 13px; font-weight: 600; }
   .object { fill: rgba(181, 71, 58, 0.18); stroke: var(--accent-text); stroke-width: 1.6; }
   .caption { margin: 4px 0 0; font-size: 13px; color: var(--text-dim); }
 </style>

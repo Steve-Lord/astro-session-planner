@@ -12,10 +12,10 @@ export interface FramePreview {
   /** Mosaic grid extent in arcminutes. */
   gridW: number;
   gridH: number;
-  /** Target outline ellipse in arcminutes, rotated in degrees; null when the size is unknown. */
-  ellipse: { rx: number; ry: number; rotateDeg: number } | null;
-  /** False when the position angle is unknown and the ellipse is drawn along the long side. */
-  orientationKnown: boolean;
+  /** Target outline ellipse in arcminutes, major axis along the frame's long side (as frameFit assumes); null when the size is unknown. */
+  ellipse: { rx: number; ry: number } | null;
+  /** Catalogued position angle in degrees, or null; informational only, never drawn. */
+  posAngle: number | null;
 }
 
 export function framePreview(t: Target, g: Gear, fit: Fit): FramePreview {
@@ -28,12 +28,11 @@ export function framePreview(t: Target, g: Gear, fit: Fit): FramePreview {
   if (t.majArcmin != null) {
     const maj = t.majArcmin;
     const min = t.minArcmin ?? maj;
-    const rotateDeg = t.posAngle == null ? 0 : ((90 - t.posAngle) % 180 + 180) % 180;
-    ellipse = { rx: maj / 2, ry: min / 2, rotateDeg };
+    ellipse = { rx: maj / 2, ry: min / 2 };
   }
 
   return {
     frameW, frameH, cols, rows, gridW, gridH, ellipse,
-    orientationKnown: t.posAngle != null,
+    posAngle: t.posAngle ?? null,
   };
 }
