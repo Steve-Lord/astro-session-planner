@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Target } from '../lib/types'
+  import { detailHash } from '../lib/detailHash'
 
-  let { label, targets }: { label: string; targets: Target[] } = $props()
+  let { label, targets, date }: { label: string; targets: Target[]; date: string } = $props()
   const CAP = 200
   let open = $state(false)
   // Brightest first (unknown magnitude last), so the capped list shows the notable objects.
@@ -15,7 +16,7 @@
   {#if open}
     <ul>
       {#each sorted.slice(0, CAP) as t (t.id)}
-        <li>{t.names[0] ?? t.id}</li>
+        <li><a href={detailHash(t.id, date)}>{t.names[0] ?? t.id}</a></li>
       {/each}
     </ul>
     {#if targets.length > CAP}<p class="more">+{targets.length - CAP} more</p>{/if}
@@ -24,6 +25,7 @@
 
 <style>
   .hidden-list { margin: 6px 0; }
+  a { color: inherit; }
   ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-dim); font-size: 13px; }
   .more { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
 </style>

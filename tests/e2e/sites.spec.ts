@@ -146,8 +146,8 @@ test.describe('Sites, horizon, settings', () => {
     const row = page.locator('ol.entries > li').filter({ hasText: 'Zed Test Nebula' })
     await expect(row).toBeVisible({ timeout: 60_000 })
     // I2: magnitude + size give it a surface brightness, so its contrast is known.
-    await row.getByRole('button', { name: 'why' }).click()
-    await expect(row.locator('dd').nth(3)).toContainText('than sky')
+    await row.getByRole('link').first().click()
+    await expect(page.locator('.factors dd').nth(3)).toContainText('than sky')
   })
 
   test('settings edit persists and reset restores defaults', async ({ page }) => {
