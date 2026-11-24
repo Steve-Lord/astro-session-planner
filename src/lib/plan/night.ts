@@ -14,7 +14,7 @@ export interface PlanInput {
 const D2R = Math.PI / 180
 
 /** Great-circle separation in degrees between two RA/Dec positions (degrees). */
-function sepDeg(ra1: number, dec1: number, ra2: number, dec2: number): number {
+export function sepDeg(ra1: number, dec1: number, ra2: number, dec2: number): number {
   const c = Math.sin(dec1 * D2R) * Math.sin(dec2 * D2R) +
     Math.cos(dec1 * D2R) * Math.cos(dec2 * D2R) * Math.cos((ra1 - ra2) * D2R)
   return Math.acos(c > 1 ? 1 : c < -1 ? -1 : c) / D2R

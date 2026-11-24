@@ -70,3 +70,20 @@ export function setRange(p: HorizonProfile, fromAz: number, toAz: number, alt: n
     leafOffAltitudes: p.leafOffAltitudes.slice(),
   };
 }
+
+/** Lowest frame-centre altitude (deg) at which frameClears is true for this azimuth. */
+export function neededHeight(
+  p: HorizonProfile | null,
+  treesBare: boolean,
+  alt: number,
+  az: number,
+  halfDiagDeg: number,
+  clearanceDeg: number,
+): number {
+  const span = halfDiagDeg / Math.max(Math.cos((alt * Math.PI) / 180), 0.1);
+  let h = Math.max(heightAt(p, az - span, treesBare), heightAt(p, az, treesBare), heightAt(p, az + span, treesBare));
+  for (let a = Math.ceil(az - span); a <= Math.floor(az + span); a++) {
+    h = Math.max(h, heightAt(p, a, treesBare));
+  }
+  return h + halfDiagDeg + clearanceDeg;
+}
