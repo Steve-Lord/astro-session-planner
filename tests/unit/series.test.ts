@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nightSeries } from '../../src/lib/plan/series'
-import { buildContext, visibility } from '../../src/lib/plan/visibility'
+import { buildContext, pickDarkWindow, visibility } from '../../src/lib/plan/visibility'
 import { darkWindow, nightBounds } from '../../src/lib/astro/time'
 import { flatProfile, heightAt } from '../../src/lib/horizon/profile'
 import { SEESTAR_S50_PRO } from '../../src/lib/gear/fit'
@@ -84,5 +84,26 @@ describe('nightSeries', () => {
     expect(s.twilight.astro).toBeNull()
     expect(s.times[0]).toBe(s.span.start)
     expect(s.times.length).toBeGreaterThan(200)
+  })
+})
+
+describe('pickDarkWindow', () => {
+  it('matches buildContext and feeds series.dark', () => {
+    const r = pickDarkWindow(london, date, settings)
+    const b = buildContext(london, gear, settings, date)
+    expect(r.dark).toEqual(b.ctx!.dark)
+    expect(r.darkSunAltUsed).toBe(b.darkSunAltUsed)
+    expect(r.noAstroDark).toBe(b.noAstroDark)
+    expect(r.dark).toEqual(darkWindow(london, date, -18))
+    expect(nightSeries(london, gear, settings, date, ngc7000).dark).toEqual(r.dark)
+  })
+
+  it('falls back to -12 with no astronomical darkness', () => {
+    const north = london  // London in June: Sun bottoms out near -15°
+    const r = pickDarkWindow(north, '2026-06-21', settings)
+    expect(r.noAstroDark).toBe(true)
+    expect(r.darkSunAltUsed).toBe(-12)
+    expect(r.dark).toEqual(darkWindow(north, '2026-06-21', -12))
+    expect(nightSeries(north, gear, settings, '2026-06-21', ngc7000).dark).toEqual(r.dark)
   })
 })

@@ -3,12 +3,24 @@
   import type { PlanInput } from '../lib/plan/night'
   import { explainTarget } from '../lib/plan/night'
   import { commonName } from '../lib/catalog/names'
+  import { nightSeries } from '../lib/plan/series'
+  import { framePreview } from '../lib/gear/preview'
+  import { frameFit } from '../lib/gear/fit'
   import { fitText, factorRows, hoursText, peakText, windowText } from './format'
+  import AltitudeChart from './AltitudeChart.svelte'
+  import MoonStrip from './MoonStrip.svelte'
+  import FramePreview from './FramePreview.svelte'
 
   let { target, input, onback }: { target: Target | null; input: Omit<PlanInput, 'catalog'>; onback: () => void } = $props()
 
   const verdict: TargetVerdict | null = $derived(target ? explainTarget(input, target) : null)
   const common = $derived(target ? commonName(target.names) : null)
+  const series = $derived(target ? nightSeries(input.site, input.gear, input.settings, input.date, target) : null)
+  const fit = $derived(
+    verdict?.kind === 'entry' ? verdict.entry.fit
+      : target ? frameFit(target, input.gear, input.settings.tooSmallFill) : null,
+  )
+  const preview = $derived(target && fit ? framePreview(target, input.gear, fit) : null)
 
   function hiddenText(v: Extract<TargetVerdict, { kind: 'hidden' }>): string {
     switch (v.cause) {
@@ -27,17 +39,33 @@
   {#if !target || !verdict}
     <p>This target isn't in the catalogue any more.</p>
   {:else}
-    <h2>{target.names[0] ?? target.id}{#if common} <span class="common">{common}</span>{/if}</h2>
+    <h2>{target.names[0] ?? target.id}{#if common}{' '}<span class="common">{common}</span>{/if}</h2>
     <p class="kind">{target.type} · {target.emission}</p>
     {#if verdict.kind === 'entry'}
       <p class="summary">
         <span class="time">{windowText(verdict.entry, input.site.timezone)}</span> {hoursText(verdict.entry)} ·
-        {peakText(verdict.entry)}{#if fitText(verdict.entry.fit)} · {fitText(verdict.entry.fit)}{/if}
+        {peakText(verdict.entry)}{#if fitText(verdict.entry.fit)}{' '}· {fitText(verdict.entry.fit)}{/if}
       </p>
     {:else}
       <p class="summary hidden-reason">{hiddenText(verdict)}</p>
     {/if}
-    <div class="charts"></div>
+    <div class="charts">
+      {#if series}
+        <AltitudeChart
+          {series}
+          windows={verdict.kind === 'entry' ? verdict.entry.windows : []}
+          best={verdict.kind === 'entry' ? verdict.entry.best : null}
+          gear={input.gear}
+          dark={series.dark}
+          timezone={input.site.timezone}
+          hasHorizon={input.site.horizon !== null}
+        />
+        <MoonStrip {series} timezone={input.site.timezone} />
+      {/if}
+      {#if preview && fit}
+        <FramePreview {preview} fitText={fitText(fit)} />
+      {/if}
+    </div>
     {#if verdict.kind === 'entry'}
       <dl class="factors">
         {#each factorRows(verdict.entry) as [k, v] (k)}

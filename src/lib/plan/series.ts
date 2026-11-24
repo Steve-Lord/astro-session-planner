@@ -6,11 +6,14 @@ import {
 import { heightAt, neededHeight } from '../horizon/profile'
 import { fovArcmin } from '../gear/fit'
 import { sepDeg } from './night'
+import { pickDarkWindow } from './visibility'
 
 const STEP_MS = 5 * 60000
 
 export interface NightSeries {
   span: TimeWindow
+  /** The dark window the planner used (pickDarkWindow); null when there is none. */
+  dark: TimeWindow | null
   twilight: { civil: TimeWindow | null; nautical: TimeWindow | null; astro: TimeWindow | null }
   times: number[]
   alt: Float32Array
@@ -31,8 +34,7 @@ export function nightSeries(
 ): NightSeries {
   const bounds = nightBounds(date, site.timezone)
   const span = darkWindow(site, date, -0.833) ?? bounds
-  const astro = darkWindow(site, date, -18)
-  const dark = (settings.darkSunAlt === -18 ? astro : null) ?? darkWindow(site, date, -12)
+  const { dark } = pickDarkWindow(site, date, settings)
 
   // Align to the buildContext grid (dark.start + k*STEP) when there is a dark window.
   const origin = dark ? dark.start : span.start
@@ -70,10 +72,11 @@ export function nightSeries(
   const { rise, set } = moonRiseSet(site, bounds)
   return {
     span,
+    dark,
     twilight: {
       civil: darkWindow(site, date, -6),
       nautical: darkWindow(site, date, -12),
-      astro,
+      astro: darkWindow(site, date, -18),
     },
     times, alt, az, horizon, needed, moonAlt, moonSep,
     moonIllum: moonIllumination((span.start + span.end) / 2),

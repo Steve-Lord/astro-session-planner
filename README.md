@@ -6,6 +6,10 @@ A deep-sky astrophotography night planner: pick a site, see what is worth shooti
 
 Your site location and horizon profile are stored only in your browser (local storage) and never leave your device. The only thing that would ever be sent anywhere is a weather lookup (a later feature), and that would send coordinates rounded to a coarse precision, nothing else.
 
+## Tonight
+
+Tap a target on Tonight (or in a hidden list) to open its detail. The altitude chart runs from sunset to sunrise, with twilight shading and hour ticks in the site's time zone. It draws your horizon at the target's azimuth, the "needed height" the frame must clear, the minimum altitude, the mount limit (alt-az only), the Moon, and the usable stretch the planner counted. Tap or drag the chart to read the time, altitude, azimuth, horizon height and Moon distance. Below the chart, a strip shows the Moon's distance from the target, shaded where moonlight hurts, and a frame preview shows the Seestar field, any mosaic panels and the object to scale.
+
 ## Gear
 
 Set Mount to Equatorial when the Seestar is polar-aligned on a wedge; targets passing overhead then count all the way up. Alt-az (the default) stops at 80°, where alt-az tracking fails.
