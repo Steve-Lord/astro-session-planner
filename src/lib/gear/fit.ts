@@ -39,7 +39,7 @@ export function fovArcmin(g: Gear): { long: number; short: number; halfDiagDeg: 
   return { long: Math.max(w, h), short: Math.min(w, h), halfDiagDeg };
 }
 
-const PANEL_OVERLAP_FACTOR = 0.85; // each panel contributes 85% of its extent (15% overlap)
+export const PANEL_OVERLAP_FACTOR = 0.85; // each panel contributes 85% of its extent (15% overlap)
 const TIGHT_FILL = 0.8;
 
 // posAngle is ignored in v1: the target's long axis is assumed to lie along the frame's long axis.
