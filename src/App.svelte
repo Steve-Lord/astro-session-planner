@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { startAutoSave, ui } from './lib/store/state.svelte'
+  import { startNight } from './lib/store/night.svelte'
   import Tonight from './ui/Tonight.svelte'
   import Sites from './ui/Sites.svelte'
   import GearView from './ui/GearView.svelte'
@@ -39,6 +40,7 @@
 
   onMount(() => {
     const stop = startAutoSave()
+    const stopNight = startNight()
     checkImport()
     const onHash = () => {
       if (checkImport()) return
@@ -49,6 +51,7 @@
     return () => {
       window.removeEventListener('hashchange', onHash)
       stop()
+      stopNight()
     }
   })
 </script>
