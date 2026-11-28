@@ -14,7 +14,7 @@ const gear = SEESTAR_S50_PRO
 const settings = DEFAULT_SETTINGS
 const m31: Target = {
   id: 'M31', names: ['M 31'], ra: 10.68, dec: 41.27, type: 'Gx', majArcmin: null, minArcmin: null,
-  posAngle: null, mag: null, surfBr: null, emission: 'none',
+  posAngle: null, mag: null, surfBr: null, emission: 'emission',
 }
 const date = '2026-11-22'
 const near = (a: { x: number; y: number }, x: number, y: number) => {
