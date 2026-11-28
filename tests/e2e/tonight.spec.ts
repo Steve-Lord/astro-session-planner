@@ -11,6 +11,8 @@ test.describe('Tonight', () => {
     await expect(rows.first()).toContainText(/\d\d:\d\d–\d\d:\d\d/)
     await expect(page.locator('p.summary')).toContainText(/Dark \d\d:\d\d–\d\d:\d\d · Moon \d+%/)
     await expect(rows.filter({ hasText: 'NGC 7000' }).first()).toContainText('MOSAIC')
+    // A space between the catalogue name and the common name.
+    await expect(rows.filter({ hasText: 'NGC 7000' }).first().locator('.title')).toHaveText('NGC 7000 North America Nebula')
 
     await page.getByRole('button', { name: /^Too small/ }).click()
     await expect(page.locator('.hidden-list li', { hasText: 'NGC 7662' })).toBeVisible()

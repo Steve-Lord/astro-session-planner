@@ -173,7 +173,7 @@
 </main>
 
 <style>
-  main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+  main { max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 48px; }
   h2 { font-size: 16px; margin: 20px 0 6px; }
   h2.page { font-size: 18px; margin: 0 0 8px; }
   .summary { color: var(--text); margin: 12px 0 4px; }

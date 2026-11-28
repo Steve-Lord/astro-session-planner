@@ -46,7 +46,7 @@
 </main>
 
 <style>
-  main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+  main { max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 48px; }
   h2.page { font-size: 18px; margin: 0 0 8px; }
   h3 { margin: 0 0 8px; font-size: 16px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 8px 0; }

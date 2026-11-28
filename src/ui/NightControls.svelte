@@ -51,4 +51,7 @@
   select { width: 100%; }
   .datebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .datelabel { color: var(--text-dim); }
+  @media (min-width: 1000px) {
+    .controls { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 12px; }
+  }
 </style>

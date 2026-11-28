@@ -137,6 +137,10 @@
     : [])
   const ticks = $derived(trackSpan && site ? hourTicks(trackSpan, site.timezone) : [])
   // The input spans the plot width plus half a thumb each side, so the thumb centre tracks xOf.
+  // Slider text is in viewBox units, so it would grow with a wide slider: scale it back to phone size.
+  let sliderW = $state(VB_W)
+  const sliderK = $derived(sliderW > 0 ? Math.min(1, Math.max(0.5, VB_W / sliderW)) : 1)
+
   const THUMB_PX = 32
   const inputStyle = `left: calc(${(M_LEFT / VB_W) * 100}% - ${THUMB_PX / 2}px); ` +
     `width: calc(${(PLOT_W / VB_W) * 100}% + ${THUMB_PX}px)`
@@ -162,6 +166,7 @@
     {#if night.runError}<p class="error" role="alert">{night.runError}</p>{/if}
 
     {#if frames}
+      <div class="stage">
       <SkyDome {frames} {index} {site} {gear} {entries} {onpick} {moonPct} />
 
       <div class="sky-readout">
@@ -169,7 +174,7 @@
         {#if darkIn}<span class="dark-in">{darkIn}</span>{/if}
       </div>
 
-      <div class="slider">
+      <div class="slider" bind:clientWidth={sliderW} style="--k: {sliderK}">
         <svg viewBox="0 0 {VB_W} {TICK_Y + 4}" aria-hidden="true">
           <rect class="day" x={M_LEFT} y="0" width={PLOT_W} height={TRACK_H} rx="3" />
           {#each shades as [cls, b] (cls)}
@@ -195,6 +200,7 @@
           style={inputStyle}
         />
       </div>
+      </div>
     {/if}
 
     {#if !planCurrent && !night.runError}
@@ -208,12 +214,17 @@
 </main>
 
 <style>
-  main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+  main { max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 48px; }
   h2.page { font-size: 18px; margin: 0 0 8px; }
   .sky-readout { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 0; }
   .sky-time { font-size: 28px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
   .dark-in { color: var(--warn-text); font-size: 14px; }
-  .slider { position: relative; max-width: 560px; }
+  /* Dome, readout and slider share one width: the dome's, up to the window height on a desktop. */
+  .stage { max-width: 520px; margin: 0 auto; }
+  @media (min-width: 1000px) {
+    .stage { max-width: max(360px, calc(100vh - 300px)); }
+  }
+  .slider { position: relative; }
   .slider svg { display: block; width: 100%; height: auto; }
   .day { fill: #2a2e3c; }
   .civil { fill: #222531; }
@@ -222,7 +233,7 @@
   .dark { fill: #0c0d12; }
   .frame { fill: none; stroke: #3a3f4d; }
   .tick-mark { stroke: var(--text-dim); }
-  .tick { fill: var(--text-dim); font-size: 11px; }
+  .tick { fill: var(--text-dim); font-size: calc(11px * var(--k, 1)); }
   /* A transparent range over the shaded track: the thumb is the only visible part. */
   input[type='range'] {
     position: absolute; top: -11px; height: 36px; margin: 0; padding: 0; min-height: 0; max-width: none;

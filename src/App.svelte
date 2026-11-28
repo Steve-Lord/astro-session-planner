@@ -91,7 +91,7 @@
 {/if}
 
 <style>
-  .tabs { display: flex; gap: 4px; max-width: 760px; margin: 8px auto 0; padding: 0 16px; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 4px; max-width: var(--page-max); margin: 8px auto 0; padding: 0 16px; border-bottom: 1px solid var(--border); }
   .tabs a { padding: 8px 12px; color: var(--text-dim); text-decoration: none; border-bottom: 2px solid transparent; }
   .tabs a[aria-current='page'] { color: var(--text); border-bottom-color: var(--accent); }
 </style>

@@ -12,6 +12,11 @@
   --err-bg: #2a1214;
   --err-text: #d98a8a;
   color-scheme: dark;
+  /* Page column: phone-first, wider on a desktop window. */
+  --page-max: 760px;
+}
+@media (min-width: 1000px) {
+  :root { --page-max: 1200px; }
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
@@ -30,4 +35,4 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .banner.info { background: var(--surface-2); color: var(--text); }
 .banner a { color: inherit; text-decoration: underline; }
 .banner button { min-height: 28px; padding: 0 8px; background: transparent; border-color: currentColor; color: inherit; }
-.app-title { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); max-width: 760px; margin: 0 auto; padding: 12px 16px 0; }
+.app-title { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 0; }

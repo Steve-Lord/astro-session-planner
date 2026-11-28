@@ -29,6 +29,8 @@
   const obstructions = $derived(obstructionPaths(site.horizon, site.treesBare, R))
 
   let width = $state(VB)
+  /** Text scale: SVG text is in viewBox units, so on a big desktop dome it is scaled back to phone size. */
+  const k = $derived(width > 0 ? Math.min(1, Math.max(0.5, VB / width)) : 1)
   /** Tap radius in viewBox units for at least 16 screen px. */
   const hitR = $derived(width > 0 ? Math.max(16, (16 * VB) / width) : 16)
 
@@ -52,7 +54,7 @@
     if (!(alt > 0)) return null
     const p = xy(alt, frames.moonAz[step])
     const pct = moonPct ?? Math.round(frames.moonIllum[step] * 100)
-    return { ...p, pct, label: sideLabel(p.x, p.y, MOON_R, `${pct}%`, 10, C) }
+    return { ...p, pct, label: sideLabel(p.x, p.y, MOON_R, `${pct}%`, 10 * k, C) }
   })
 
   const stars = $derived(sunAlt < -6
@@ -76,8 +78,8 @@
   const labels = $derived.by(() => {
     const obstacles: Box[] = [
       ...targets.map((t) => around(t.x, t.y, dotR(t.rank) + 1)),
-      ...COMPASS.map((c) => around(c.x, c.y, 7)),
-      ...ringLabels.map((l) => ({ x0: l.x, y0: l.y - 6, x1: l.x + textWidth(l.text, 9), y1: l.y + 5 })),
+      ...COMPASS.map((c) => around(c.x, c.y, 7 * k)),
+      ...ringLabels.map((l) => ({ x0: l.x, y0: l.y - 6 * k, x1: l.x + textWidth(l.text, 9 * k), y1: l.y + 5 * k })),
       ...stars.map((s) => around(s.x, s.y, 2)),
     ]
     if (moon) {
@@ -86,8 +88,8 @@
     }
     const reqs: LabelRequest[] = [
       ...targets.filter((t) => t.rank < LABELLED)
-        .map((t) => ({ key: t.id, x: t.x, y: t.y, text: nameOf(t.id), fontSize: LABEL_PX })),
-      ...stars.map((s) => ({ key: `star:${s.name}`, x: s.x, y: s.y, text: s.name, fontSize: STAR_PX })),
+        .map((t) => ({ key: t.id, x: t.x, y: t.y, text: nameOf(t.id), fontSize: LABEL_PX * k })),
+      ...stars.map((s) => ({ key: `star:${s.name}`, x: s.x, y: s.y, text: s.name, fontSize: STAR_PX * k })),
     ]
     // Every dot a name could be mistaken for: a label must sit clearly nearest its own.
     const dots = [
@@ -154,7 +156,7 @@
   })
 </script>
 
-<div class="dome" bind:clientWidth={width}>
+<div class="dome" bind:clientWidth={width} style="--k: {k}">
   <!-- A tap on empty sky closes the pop-up; Escape does the same from the keyboard (below). iOS Safari
        only sends click events to elements that look clickable, hence the handler here and the cursor. -->
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -224,7 +226,7 @@
 </div>
 
 <style>
-  .dome { position: relative; max-width: 520px; margin: 8px auto 0; }
+  .dome { position: relative; margin: 8px auto 0; }
   svg { display: block; width: 100%; height: auto; user-select: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sky.day { fill: #2a2e3c; }
   .sky.civil { fill: #222531; }
@@ -236,16 +238,16 @@
   .trees { fill: #24402b; stroke: #4f8a5c; stroke-width: 0.8; stroke-linejoin: round; }
   .ring { fill: none; stroke: #ffffff; stroke-opacity: 0.09; }
   .limit { fill: none; stroke: #9aa0ae; stroke-opacity: 0.55; stroke-dasharray: 4 4; }
-  .ring-label { fill: var(--text-dim); font-size: 9px; opacity: 0.7; }
-  .compass { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .ring-label { fill: var(--text-dim); font-size: calc(9px * var(--k)); opacity: 0.7; }
+  .compass { fill: var(--text); font-size: calc(12px * var(--k)); font-weight: 600; }
   .star circle { fill: #8c93a3; }
-  .star text { fill: #646a79; font-size: 9px; }
+  .star text { fill: #646a79; font-size: calc(9px * var(--k)); }
   .moon circle { fill: #d8dce6; }
-  .moon text { fill: #9db8e8; font-size: 10px; }
+  .moon text { fill: #9db8e8; font-size: calc(10px * var(--k)); }
   .target { cursor: pointer; outline: none; }
   .target .dot { fill: #eef0f4; stroke: #0a0b0f; stroke-width: 0.8; }
   .target .hit { fill: transparent; }
-  .target text { fill: #d6d9e0; font-size: 11px; paint-order: stroke; stroke: #0a0b0f; stroke-width: 3px; stroke-linejoin: round; }
+  .target text { fill: #d6d9e0; font-size: calc(11px * var(--k)); paint-order: stroke; stroke: #0a0b0f; stroke-width: calc(3px * var(--k)); stroke-linejoin: round; }
   .target.faint .dot { fill: #6f7482; }
   .target.faint text { fill: #7c8190; }
   .target .lead { stroke: #8c93a3; stroke-width: 0.8; stroke-opacity: 0.7; pointer-events: none; }
