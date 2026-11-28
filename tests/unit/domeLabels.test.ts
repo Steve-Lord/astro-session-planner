@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { around, pickAt, placeLabels, type Box, type LabelRequest } from '../../src/ui/domeLabels'
+import { around, pickAt, placeLabels, sideLabel, type Box, type LabelRequest } from '../../src/ui/domeLabels'
 
 const bounds: Box = { x0: 0, y0: 0, x1: 358, y1: 358 }
 const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
@@ -45,5 +45,20 @@ describe('pickAt', () => {
   it('ignores star labels and misses outside every area', () => {
     const star = { key: 'star:Vega', x: 0, y: 0, anchor: 'start' as const, box: { x0: 0, y0: 0, x1: 50, y1: 20 } }
     expect(pickAt({ x: 10, y: 10 }, [star], dots, 16)).toBeNull()
+  })
+})
+
+describe('sideLabel', () => {
+  it('puts the label right of a disc east of centre (left half)', () => {
+    const l = sideLabel(60, 179, 7, '95%', 10, 179)
+    expect(l.anchor).toBe('start')
+    expect(l.box.x0).toBeGreaterThan(67)
+  })
+  it('puts the label on the inner side (left) of a disc in the west, inside the dome', () => {
+    const l = sideLabel(335, 179, 7, '100%', 10, 179)
+    expect(l.anchor).toBe('end')
+    expect(l.box.x1).toBeLessThan(335 - 7)
+    expect(l.box.x0).toBeGreaterThan(0)
+    expect(l.x).toBeCloseTo(l.box.x1, 6)
   })
 })

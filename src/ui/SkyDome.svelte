@@ -2,10 +2,12 @@
   import type { Gear, PlanEntry, Site } from '../lib/types'
   import { obstructionPaths, project, type DomeFrames } from '../lib/sky/dome'
   import { commonName } from '../lib/catalog/names'
-  import { around, pickAt, placeLabels, textWidth, type Box, type LabelRequest } from './domeLabels'
+  import { around, pickAt, placeLabels, sideLabel, textWidth, type Box, type LabelRequest } from './domeLabels'
 
-  let { frames, index, site, gear, entries, onpick }: {
+  let { frames, index, site, gear, entries, onpick, moonPct = null }: {
     frames: DomeFrames; index: number; site: Site; gear: Gear; entries: PlanEntry[]; onpick: (id: string) => void
+    /** The plan's Moon illumination % (as Tonight shows it); null falls back to the per-step value. */
+    moonPct?: number | null
   } = $props()
 
   // viewBox units are px when the card is 358 px wide (a 390 px phone).
@@ -15,6 +17,7 @@
   const LABELLED = 10
   const LABEL_PX = 11
   const STAR_PX = 9
+  const MOON_R = 7
 
   const xy = (alt: number, az: number) => {
     const p = project(alt, az, R)
@@ -47,7 +50,9 @@
   const moon = $derived.by(() => {
     const alt = frames.moonAlt[step]
     if (!(alt > 0)) return null
-    return { ...xy(alt, frames.moonAz[step]), pct: Math.round(frames.moonIllum[step] * 100) }
+    const p = xy(alt, frames.moonAz[step])
+    const pct = moonPct ?? Math.round(frames.moonIllum[step] * 100)
+    return { ...p, pct, label: sideLabel(p.x, p.y, MOON_R, `${pct}%`, 10, C) }
   })
 
   const stars = $derived(sunAlt < -6
@@ -66,7 +71,6 @@
   ])
   const ringLabels = [30, 60].map((alt) => ({ text: `${alt}°`, x: C + 3, y: C - ringR(alt) + 8 }))
 
-  const MOON_R = 7
   const dotR = (rank: number) => (rank < LABELLED ? 3.6 : 2.6)
 
   const labels = $derived.by(() => {
@@ -78,7 +82,7 @@
     ]
     if (moon) {
       obstacles.push(around(moon.x, moon.y, MOON_R + 1))
-      obstacles.push({ x0: moon.x + MOON_R + 2, y0: moon.y - 6, x1: moon.x + MOON_R + 4 + textWidth(`${moon.pct}%`, 10), y1: moon.y + 6 })
+      obstacles.push(moon.label.box)
     }
     const reqs: LabelRequest[] = [
       ...targets.filter((t) => t.rank < LABELLED)
@@ -146,7 +150,10 @@
 </script>
 
 <div class="dome" bind:clientWidth={width}>
-  <svg bind:this={svg} viewBox="0 0 {VB} {VB}" role="img" aria-label="Sky dome">
+  <!-- A tap on empty sky closes the pop-up; Escape does the same from the keyboard (below). iOS Safari
+       only sends click events to elements that look clickable, hence the handler here and the cursor. -->
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+  <svg bind:this={svg} viewBox="0 0 {VB} {VB}" role="img" aria-label="Sky dome" onclick={() => (selected = null)}>
     <circle class="sky {skyClass}" cx={C} cy={C} r={R} />
     {#if obstructions.roof}<path class="roof" transform="translate({C} {C})" d={obstructions.roof} />{/if}
     {#if obstructions.trees}<path class="trees" transform="translate({C} {C})" d={obstructions.trees} />{/if}
@@ -172,7 +179,7 @@
     {#if moon}
       <g class="moon">
         <circle cx={moon.x} cy={moon.y} r={MOON_R} />
-        <text x={moon.x + MOON_R + 3} y={moon.y} dominant-baseline="central">{moon.pct}%</text>
+        <text x={moon.label.x} y={moon.label.y} text-anchor={moon.label.anchor} dominant-baseline="central">{moon.pct}%</text>
       </g>
     {/if}
 
@@ -210,7 +217,7 @@
 
 <style>
   .dome { position: relative; max-width: 520px; margin: 8px auto 0; }
-  svg { display: block; width: 100%; height: auto; user-select: none; -webkit-tap-highlight-color: transparent; }
+  svg { display: block; width: 100%; height: auto; user-select: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sky.day { fill: #2a2e3c; }
   .sky.civil { fill: #222531; }
   .sky.nautical { fill: #1a1c26; }

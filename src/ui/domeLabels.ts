@@ -70,3 +70,19 @@ export function pickAt(
   }
   return id
 }
+
+/**
+ * A label beside a disc of radius `r` at (x, y), on the side towards the dome's centre column, so a
+ * disc near the west (right) rim keeps its label inside the dome.
+ */
+export function sideLabel(
+  x: number, y: number, r: number, text: string, fontSize: number, centreX: number,
+): PlacedLabel {
+  const w = textWidth(text, fontSize)
+  const h = fontSize + 2
+  const gap = r + 3
+  if (x > centreX) {
+    return { key: text, x: x - gap, y, anchor: 'end', box: { x0: x - gap - w, y0: y - h / 2, x1: x - gap, y1: y + h / 2 } }
+  }
+  return { key: text, x: x + gap, y, anchor: 'start', box: { x0: x + gap, y0: y - h / 2, x1: x + gap + w, y1: y + h / 2 } }
+}

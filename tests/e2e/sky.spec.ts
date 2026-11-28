@@ -158,4 +158,76 @@ test.describe('Sky', () => {
     await expect(page).toHaveURL(/#sky$/)
     await expect(page.getByRole('img', { name: 'Sky dome' })).toBeVisible()
   })
+
+  test('tapping empty sky closes the pop-up', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    const first = page.locator('g.target').first()
+    await expect(first).toBeAttached({ timeout: 60_000 })
+    await first.locator('circle.dot').click({ force: true })
+    const details = page.getByRole('button', { name: 'Details ›' })
+    await expect(details).toBeVisible()
+    // An empty point of sky: inside the dome, far from every dot and label.
+    const pt = await page.evaluate(() => {
+      const svg = document.querySelector<SVGSVGElement>('svg[aria-label="Sky dome"]')!
+      const dots = [...svg.querySelectorAll<SVGCircleElement>('g.target circle.dot, g.moon circle')]
+        .map((c) => [c.cx.baseVal.value, c.cy.baseVal.value])
+      for (let r = 0; r < 150; r += 10) {
+        for (let a = 0; a < 360; a += 15) {
+          const x = 179 + r * Math.cos((a * Math.PI) / 180)
+          const y = 179 + r * Math.sin((a * Math.PI) / 180)
+          if (dots.every(([dx, dy]) => Math.hypot(dx - x, dy - y) > 40)) {
+            const p = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!)
+            const el = document.elementFromPoint(p.x, p.y)
+            if (el && !el.closest('g.target') && !el.closest('.pop')) return { x: p.x, y: p.y }
+          }
+        }
+      }
+      return null
+    })
+    expect(pt).not.toBeNull()
+    // The dome itself must handle it: iOS Safari may not deliver this tap to a document listener, so
+    // stop the click below the app root (Svelte's delegated handlers live on #app).
+    await page.evaluate(() => document.body.addEventListener('click', (e) => e.stopPropagation()))
+    await page.mouse.click(pt!.x, pt!.y)
+    await expect(details).toHaveCount(0)
+  })
+
+  test("the Moon's % matches Tonight's summary", async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    await expect(page.locator('g.target').first()).toBeAttached({ timeout: 60_000 })
+    const summary = await page.locator('p.summary').textContent()
+    const want = summary!.match(/Moon (\d+)%/)![1]
+    const slider = page.getByRole('slider', { name: 'Time' })
+    const max = Number(await slider.getAttribute('max'))
+    const seen = new Set<string>()
+    for (let v = 0; v <= max; v += 6) {
+      await slider.evaluate((el: HTMLInputElement, val) => {
+        el.value = String(val)
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+      }, v)
+      const moon = page.locator('g.moon text')
+      if (await moon.count()) seen.add((await moon.textContent())!)
+    }
+    expect(seen.size).toBeGreaterThan(0)
+    expect([...seen]).toEqual([`${want}%`])
+  })
+
+  test('the slider thumb is at least 32 px wide', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    await expect(page.getByRole('slider', { name: 'Time' })).toBeAttached()
+    const widths = await page.evaluate(() => {
+      const out: string[] = []
+      for (const sheet of [...document.styleSheets]) {
+        for (const rule of [...sheet.cssRules]) {
+          if (rule instanceof CSSStyleRule && /slider-thumb|range-thumb/.test(rule.selectorText)) out.push(rule.style.width)
+        }
+      }
+      return out
+    })
+    expect(widths.length).toBeGreaterThan(0)
+    for (const w of widths) expect(parseFloat(w)).toBeGreaterThanOrEqual(32)
+  })
 })

@@ -20,6 +20,8 @@
   const entries = $derived(domeEntries(night.plan, night.planning, night.date, site?.id ?? ''))
   const planCurrent = $derived(!night.planning && night.plan !== null && night.plan.date === night.date &&
     night.plan.siteId === site?.id)
+  // The Moon's % as Tonight's summary shows it, from the current plan.
+  const moonPct = $derived(planCurrent && night.plan ? Math.round(night.plan.moon.illumination * 100) : null)
 
   const frames = $derived.by(() => {
     if (!site || !gear || !DATE_RE.test(night.date)) return null
@@ -135,7 +137,9 @@
     : [])
   const ticks = $derived(trackSpan && site ? hourTicks(trackSpan, site.timezone) : [])
   // The input spans the plot width plus half a thumb each side, so the thumb centre tracks xOf.
-  const inputStyle = `left: calc(${(M_LEFT / VB_W) * 100}% - 9px); width: calc(${(PLOT_W / VB_W) * 100}% + 18px)`
+  const THUMB_PX = 32
+  const inputStyle = `left: calc(${(M_LEFT / VB_W) * 100}% - ${THUMB_PX / 2}px); ` +
+    `width: calc(${(PLOT_W / VB_W) * 100}% + ${THUMB_PX}px)`
 </script>
 
 <main>
@@ -158,7 +162,7 @@
     {#if night.runError}<p class="error" role="alert">{night.runError}</p>{/if}
 
     {#if frames}
-      <SkyDome {frames} {index} {site} {gear} {entries} {onpick} />
+      <SkyDome {frames} {index} {site} {gear} {entries} {onpick} {moonPct} />
 
       <div class="sky-readout">
         <span class="sky-time" aria-live="polite">{timeText}</span>
@@ -226,12 +230,17 @@
   }
   input[type='range']::-webkit-slider-runnable-track { height: 36px; background: transparent; }
   input[type='range']::-moz-range-track { height: 36px; background: transparent; }
+  /* The thumb is 32 px wide to grab (iOS does not jump to a tapped track point); transparent side
+     borders keep the visible bar 16 px wide. Keep the width in step with THUMB_PX. */
   input[type='range']::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 18px; height: 32px; margin-top: 2px; border-radius: 6px;
-    background: var(--accent-text); border: 2px solid var(--bg);
+    -webkit-appearance: none; box-sizing: border-box; width: 32px; height: 32px; margin-top: 2px;
+    border: solid transparent; border-width: 2px 8px; border-radius: 10px / 6px;
+    background: var(--accent-text); background-clip: content-box;
   }
   input[type='range']::-moz-range-thumb {
-    width: 14px; height: 28px; border-radius: 6px; background: var(--accent-text); border: 2px solid var(--bg);
+    box-sizing: border-box; width: 32px; height: 32px;
+    border: solid transparent; border-width: 2px 8px; border-radius: 10px / 6px;
+    background: var(--accent-text); background-clip: content-box;
   }
   .status { color: var(--text-dim); }
   .note { margin: 8px 0 0; font-size: 12px; color: var(--warn-text); }
