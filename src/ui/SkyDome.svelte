@@ -89,7 +89,12 @@
         .map((t) => ({ key: t.id, x: t.x, y: t.y, text: nameOf(t.id), fontSize: LABEL_PX })),
       ...stars.map((s) => ({ key: `star:${s.name}`, x: s.x, y: s.y, text: s.name, fontSize: STAR_PX })),
     ]
-    return new Map(placeLabels(reqs, obstacles, { x0: 1, y0: 1, x1: VB - 1, y1: VB - 1 }).map((p) => [p.key, p]))
+    // Every dot a name could be mistaken for: a label must sit clearly nearest its own.
+    const dots = [
+      ...targets.map((t) => ({ key: t.id, x: t.x, y: t.y })),
+      ...stars.map((s) => ({ key: `star:${s.name}`, x: s.x, y: s.y })),
+    ]
+    return new Map(placeLabels(reqs, obstacles, { x0: 1, y0: 1, x1: VB - 1, y1: VB - 1 }, dots).map((p) => [p.key, p]))
   })
 
   let selected = $state<string | null>(null)
@@ -199,6 +204,9 @@
         <circle class="dot" cx={t.x} cy={t.y} r={dotR(t.rank)} />
         <circle class="hit" cx={t.x} cy={t.y} r={hitR} />
         {#if t.rank < LABELLED && l}
+          {#if Math.hypot(l.lead.x2 - l.lead.x1, l.lead.y2 - l.lead.y1) > 1.5}
+            <line class="lead" x1={l.lead.x1} y1={l.lead.y1} x2={l.lead.x2} y2={l.lead.y2} />
+          {/if}
           <rect class="hit" x={l.box.x0} y={l.box.y0} width={l.box.x1 - l.box.x0} height={l.box.y1 - l.box.y0} />
           <text x={l.x} y={l.y} text-anchor={l.anchor} dominant-baseline="central">{nameOf(t.id)}</text>
         {/if}
@@ -240,6 +248,11 @@
   .target text { fill: #d6d9e0; font-size: 11px; paint-order: stroke; stroke: #0a0b0f; stroke-width: 3px; stroke-linejoin: round; }
   .target.faint .dot { fill: #6f7482; }
   .target.faint text { fill: #7c8190; }
+  .target .lead { stroke: #8c93a3; stroke-width: 0.8; stroke-opacity: 0.7; pointer-events: none; }
+  .target.faint .lead { stroke-opacity: 0.4; }
+  .target.selected .dot { fill: var(--accent-text); }
+  .target.selected text { fill: var(--accent-text); }
+  .target.selected .lead { stroke: var(--accent-text); stroke-opacity: 1; stroke-width: 1.2; }
   .target:focus-visible .dot { stroke: var(--accent-text); stroke-width: 2; }
   .pick-ring { fill: none; stroke: var(--accent-text); stroke-width: 1.5; pointer-events: none; }
   text { pointer-events: none; }

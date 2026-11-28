@@ -73,6 +73,70 @@ test.describe('Sky', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 
+  test("no name or leader line can be taken for a neighbour's, all night", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    await expect(page.locator('g.target').first()).toBeAttached({ timeout: 60_000 })
+    const slider = page.getByRole('slider', { name: 'Time' })
+    const max = Number(await slider.getAttribute('max'))
+    let checked = 0
+    let steps = 0
+    for (let i = 0; i <= max; i += 6) {
+      await slider.fill(String(i))
+      const bad = await page.evaluate(() => {
+        const dots = [...document.querySelectorAll('g.target')].map((g) => {
+          const c = g.querySelector('circle.dot')!
+          return { id: g.getAttribute('data-id'), x: +c.getAttribute('cx')!, y: +c.getAttribute('cy')! }
+        })
+        const out: string[] = []
+        let n = 0
+        for (const g of document.querySelectorAll('g.target')) {
+          const t = g.querySelector('text') as SVGTextElement | null
+          if (!t) continue
+          n++
+          const b = t.getBBox()
+          const d = (x: number, y: number) =>
+            Math.hypot(Math.max(b.x - x, 0, x - b.x - b.width), Math.max(b.y - y, 0, y - b.y - b.height))
+          const own = dots.find((o) => o.id === g.getAttribute('data-id'))!
+          const ln = g.querySelector('line.lead')
+          const seg = (x: number, y: number) => {
+            if (!ln) return Infinity
+            const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map((a) => +ln.getAttribute(a)!)
+            const dx = x2 - x1, dy = y2 - y1
+            const k = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy || 1)))
+            return Math.hypot(x1 + k * dx - x, y1 + k * dy - y)
+          }
+          // Rendered text is a little wider than the placer's estimate, hence the slack.
+          for (const o of dots) {
+            if (o === own) continue
+            if (d(o.x, o.y) < Math.min(d(own.x, own.y) + 2, 7)) out.push(`${own.id} label vs ${o.id}`)
+            if (seg(o.x, o.y) < 4) out.push(`${own.id} line vs ${o.id}`)
+          }
+        }
+        return { out, n }
+      })
+      expect(bad.out).toEqual([])
+      checked += bad.n
+      steps++
+    }
+    // Most of the top 10 still get a name on average.
+    expect(checked / steps).toBeGreaterThanOrEqual(6)
+  })
+
+  test('tapping a target highlights its dot and name', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    const first = page.locator('g.target').first()
+    await expect(first.locator('text')).toBeAttached({ timeout: 60_000 })
+    await first.locator('text').click({ force: true })
+    await expect(first).toHaveClass(/selected/)
+    await expect(first.locator('text')).toHaveCSS('fill', 'rgb(217, 138, 127)')
+    await expect(first.locator('circle.dot')).toHaveCSS('fill', 'rgb(217, 138, 127)')
+    const other = page.locator('g.target:not(.selected) text').first()
+    await expect(other).not.toHaveCSS('fill', 'rgb(217, 138, 127)')
+  })
+
   test('tap opens the name pop-up', async ({ page }) => {
     await seedStorage(page)
     await page.goto('/?date=2026-11-22#sky')
