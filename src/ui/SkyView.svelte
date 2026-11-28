@@ -3,7 +3,7 @@
   import { appState } from '../lib/store/state.svelte'
   import { night } from '../lib/store/night.svelte'
   import { DATE_RE } from '../lib/store/nightDate'
-  import { domeFrames, initialIndex } from '../lib/sky/dome'
+  import { domeEntries, domeFrames, initialIndex } from '../lib/sky/dome'
   import { formatLocal } from '../lib/astro/time'
   import { detailHash } from '../lib/detailHash'
   import type { Gear, Settings, Site } from '../lib/types'
@@ -11,13 +11,13 @@
   import SkyDome from './SkyDome.svelte'
   import { M_LEFT, PLOT_W, VB_W, hourTicks, spanBand, xOf } from './chartAxis'
 
-  const TOP_N = 30
-
   const site: Site | undefined = $derived(appState.sites.find((s) => s.id === appState.selectedSiteId))
   const gear: Gear | undefined = $derived(appState.gear.find((g) => g.id === appState.selectedGearId))
 
-  // While a new plan is computed the dome shows no targets rather than the previous night's.
-  const entries = $derived(!night.planning && night.plan ? night.plan.entries.slice(0, TOP_N) : [])
+  // Only a plan for the selected night and site; otherwise no targets rather than the previous night's.
+  const entries = $derived(domeEntries(night.plan, night.planning, night.date, site?.id ?? ''))
+  const planCurrent = $derived(!night.planning && night.plan !== null && night.plan.date === night.date &&
+    night.plan.siteId === site?.id)
 
   const frames = $derived.by(() => {
     if (!site || !gear || !DATE_RE.test(night.date)) return null
@@ -141,9 +141,9 @@
       </div>
     {/if}
 
-    {#if night.planning || (!night.plan && !night.runError)}
+    {#if !planCurrent && !night.runError}
       <p class="status" role="status">Planning…</p>
-    {:else if night.plan && night.plan.entries.length === 0}
+    {:else if planCurrent && entries.length === 0}
       <p class="status">No targets are usable this night.</p>
     {/if}
     {#if site.horizon === null}<p class="note">No horizon saved for this site</p>{/if}

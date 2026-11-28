@@ -2,7 +2,7 @@
   import type { Gear, PlanEntry, Site } from '../lib/types'
   import { obstructionPaths, project, type DomeFrames } from '../lib/sky/dome'
   import { commonName } from '../lib/catalog/names'
-  import { around, placeLabels, textWidth, type Box, type LabelRequest } from './domeLabels'
+  import { around, pickAt, placeLabels, textWidth, type Box, type LabelRequest } from './domeLabels'
 
   let { frames, index, site, gear, entries, onpick }: {
     frames: DomeFrames; index: number; site: Site; gear: Gear; entries: PlanEntry[]; onpick: (id: string) => void
@@ -98,18 +98,14 @@
 
   let svg: SVGSVGElement | undefined = $state()
   /**
-   * Tap areas overlap where dots are close, and the later (lower-ranked) one is on top, so a tap on
-   * a dot's area picks the nearest dot to the finger instead. A tap on a label picks its own target.
+   * Tap areas overlap where dots are close, and later (lower-ranked) ones are on top, so the tap is
+   * resolved from the point itself: a label under the finger wins, else the nearest dot.
    */
   function tap(id: string, e: MouseEvent): void {
     const m = svg?.getScreenCTM()
-    if (m && !(e.target instanceof SVGRectElement)) {
+    if (m) {
       const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse())
-      let best = hitR
-      for (const t of targets) {
-        const d = Math.hypot(t.x - p.x, t.y - p.y)
-        if (d <= best) { best = d; id = t.id }
-      }
+      id = pickAt(p, labels.values(), targets, hitR) ?? id
     }
     select(id, e)
   }

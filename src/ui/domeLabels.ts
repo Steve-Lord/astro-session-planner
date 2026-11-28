@@ -50,3 +50,23 @@ export function placeLabels(requests: LabelRequest[], obstacles: Box[], bounds: 
   }
   return out
 }
+
+/**
+ * The target a tap at `p` (viewBox units) means: a target label under the point wins, since a label
+ * can sit inside a neighbour's tap area; otherwise the nearest dot within `radius`; else null.
+ * Star labels (keys starting `star:`) are not tappable.
+ */
+export function pickAt(
+  p: { x: number; y: number }, labels: Iterable<PlacedLabel>, dots: { id: string; x: number; y: number }[], radius: number,
+): string | null {
+  for (const l of labels) {
+    if (!l.key.startsWith('star:') && p.x >= l.box.x0 && p.x <= l.box.x1 && p.y >= l.box.y0 && p.y <= l.box.y1) return l.key
+  }
+  let best = radius
+  let id: string | null = null
+  for (const d of dots) {
+    const dist = Math.hypot(d.x - p.x, d.y - p.y)
+    if (dist <= best) { best = dist; id = d.id }
+  }
+  return id
+}

@@ -1,4 +1,4 @@
-import type { Gear, HorizonProfile, Settings, Site, Target, TimeWindow } from '../types'
+import type { Gear, HorizonProfile, NightPlan, PlanEntry, Settings, Site, Target, TimeWindow } from '../types'
 import {
   altAz, lstDeg, moonAltAz, moonIllumination, precessToDate, sunAltAz,
 } from '../astro/positions'
@@ -162,4 +162,17 @@ export function initialIndex(times: number[], now: number, dark: TimeWindow | nu
   if (!dark) return 0
   const i = times.findIndex((t) => t >= dark.start)
   return i < 0 ? 0 : i
+}
+
+/** The dome shows the top 30 of the plan, in plan order. */
+export const DOME_TARGETS = 30
+
+/**
+ * The plan entries the dome may draw: none while planning or when the plan is for another night or
+ * site (it lags a tick behind a change of selection), so the dome never pairs a stale plan with the
+ * new night's positions.
+ */
+export function domeEntries(plan: NightPlan | null, planning: boolean, date: string, siteId: string): PlanEntry[] {
+  if (planning || !plan || plan.date !== date || plan.siteId !== siteId) return []
+  return plan.entries.slice(0, DOME_TARGETS)
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { domeFrames, initialIndex, obstructionPaths, project } from '../../src/lib/sky/dome'
+import { domeEntries, domeFrames, initialIndex, obstructionPaths, project } from '../../src/lib/sky/dome'
 import { nightSeries } from '../../src/lib/plan/series'
 import { flatProfile } from '../../src/lib/horizon/profile'
 import { SEESTAR_S50_PRO } from '../../src/lib/gear/fit'
 import { DEFAULT_SETTINGS } from '../../src/lib/sky/brightness'
-import type { Site, Target } from '../../src/lib/types'
+import type { NightPlan, PlanEntry, Site, Target } from '../../src/lib/types'
 
 const london: Site = {
   id: 'london', name: 'London', lat: 51.5, lon: -0.13, elevation: 0,
@@ -161,5 +161,21 @@ describe('initialIndex', () => {
   it('falls back to the dark start, then 0', () => {
     expect(initialIndex(times, times[0] - 86400000, dark)).toBe(3)
     expect(initialIndex(times, times[0] - 86400000, null)).toBe(0)
+  })
+})
+
+describe('domeEntries', () => {
+  const entry = (id: string) => ({ target: { ...m31, id } }) as unknown as PlanEntry
+  const plan = { siteId: 'london', date: '2026-11-22', entries: Array.from({ length: 40 }, (_, i) => entry(`T${i}`)) } as unknown as NightPlan
+
+  it('takes the top 30 of a plan that matches the selection', () => {
+    const e = domeEntries(plan, false, '2026-11-22', 'london')
+    expect(e.map((x) => x.target.id)).toEqual(Array.from({ length: 30 }, (_, i) => `T${i}`))
+  })
+  it('is empty while planning, with no plan, or when the plan is for another night or site', () => {
+    expect(domeEntries(plan, true, '2026-11-22', 'london')).toEqual([])
+    expect(domeEntries(null, false, '2026-11-22', 'london')).toEqual([])
+    expect(domeEntries(plan, false, '2026-11-23', 'london')).toEqual([])
+    expect(domeEntries(plan, false, '2026-11-22', 'oslo')).toEqual([])
   })
 })
