@@ -329,7 +329,7 @@
 </main>
 
 <style>
-  main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+  main { max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 48px; }
   h2.page { font-size: 18px; margin: 0 0 8px; }
   h3 { margin: 0; font-size: 16px; }
   .sites { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }

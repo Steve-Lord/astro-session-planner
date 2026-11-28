@@ -127,7 +127,7 @@
 </section>
 
 <style>
-  .probe { max-width: 760px; margin: 0 auto; padding: 12px 16px 32px; }
+  .probe { max-width: var(--page-max); margin: 0 auto; padding: 12px 16px 32px; }
   .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .head a { font-size: 18px; }
   .big { width: 100%; min-height: 56px; font-size: 20px; }

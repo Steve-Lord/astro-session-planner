@@ -14,7 +14,7 @@
 <li class="row">
   <span class="rank">{rank}.</span>
   <a class="main" href={detailHash(t.id, date)}>
-    <div class="title"><strong>{t.names[0] ?? t.id}</strong>{#if common} <span class="common">{common}</span>{/if}</div>
+    <div class="title"><strong>{t.names[0] ?? t.id}</strong>{#if common}{' '}<span class="common">{common}</span>{/if}</div>
     <div class="meta">
       {t.type} · {t.emission} · <span class="time">{windowText(entry, timezone)}</span> {hoursText(entry)} ·
       {peakText(entry)}{#if fit} · <span class="fit">{fit}</span>{/if}
@@ -30,4 +30,9 @@
   .common { color: var(--text-dim); }
   .meta { color: var(--text-dim); font-size: 13px; margin: 2px 0 4px; }
   .fit { color: var(--accent-text); }
+  @media (min-width: 1000px) {
+    .main { display: flex; gap: 16px; align-items: baseline; }
+    .title { flex: 0 0 300px; }
+    .meta { flex: 1; margin: 0; }
+  }
 </style>

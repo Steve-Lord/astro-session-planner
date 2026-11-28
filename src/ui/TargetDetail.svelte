@@ -51,6 +51,7 @@
     {:else}
       <p class="summary hidden-reason">{hiddenText(verdict)}</p>
     {/if}
+    <div class="cols">
     <div class="charts">
       {#if series}
         <AltitudeChart
@@ -64,10 +65,11 @@
         />
         <MoonStrip {series} timezone={input.site.timezone} />
       {/if}
+    </div>
+    <div class="side">
       {#if preview && fit}
         <FramePreview {preview} fitText={fitText(fit)} />
       {/if}
-    </div>
     {#if verdict.kind === 'entry'}
       <dl class="factors">
         {#each factorRows(verdict.entry) as [k, v] (k)}
@@ -75,6 +77,8 @@
         {/each}
       </dl>
     {/if}
+    </div>
+    </div>
   {/if}
 </section>
 
@@ -87,4 +91,10 @@
   .summary { margin: 4px 0 12px; }
   .factors { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 12px 0 0; font-size: 14px; color: var(--text-dim); }
   .factors dt, .factors dd { margin: 0; }
+  /* Charts keep their phone size (their text scales with width); the side column takes the rest. */
+  @media (min-width: 1000px) {
+    .cols { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 32px; align-items: start; }
+    .side { max-width: 400px; }
+    .side .factors { margin-top: 16px; }
+  }
 </style>
