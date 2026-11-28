@@ -1,24 +1,32 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { startAutoSave, ui } from './lib/store/state.svelte'
+  import { startNight } from './lib/store/night.svelte'
   import Tonight from './ui/Tonight.svelte'
   import Sites from './ui/Sites.svelte'
+  import SkyView from './ui/SkyView.svelte'
   import GearView from './ui/GearView.svelte'
   import Settings from './ui/Settings.svelte'
   import SensorProbe from './ui/SensorProbe.svelte'
   import ImportHorizon from './ui/ImportHorizon.svelte'
+  import { parseDetailHash } from './lib/detailHash'
   import { readImportHash } from './lib/horizon/share'
 
   const TABS = [
     { id: 'tonight', label: 'Tonight' },
+    { id: 'sky', label: 'Sky' },
     { id: 'sites', label: 'Sites' },
     { id: 'gear', label: 'Gear' },
     { id: 'settings', label: 'Settings' },
   ] as const
   type Tab = (typeof TABS)[number]['id']
 
-  // #target=… (a target's detail screen) lives inside the Tonight tab.
-  const fromHash = (): Tab => (location.hash.startsWith('#target=') ? 'tonight' : TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight')
+  // #target=… (a target's detail screen) lives inside the Tonight tab, or the Sky tab when from=sky.
+  const fromHash = (): Tab => {
+    const d = parseDetailHash(location.hash)
+    if (d) return d.from === 'sky' ? 'sky' : 'tonight'
+    return TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight'
+  }
   let tab = $state<Tab>(fromHash())
   // Hidden debug screen (not in the tab bar) for checking device-orientation behaviour on a phone.
   const isProbe = () => location.hash === '#sensor-probe'
@@ -39,6 +47,7 @@
 
   onMount(() => {
     const stop = startAutoSave()
+    const stopNight = startNight()
     checkImport()
     const onHash = () => {
       if (checkImport()) return
@@ -49,6 +58,7 @@
     return () => {
       window.removeEventListener('hashchange', onHash)
       stop()
+      stopNight()
     }
   })
 </script>
@@ -67,9 +77,10 @@
     {/each}
   </nav>
 {/if}
-<!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
-     survive tab switches. -->
+<!-- Tonight, Sky and Sites stay mounted (hidden) so Tonight's list, the Sky slider and unsaved
+     horizon edits survive tab switches. -->
 <div hidden={probe || tab !== 'tonight'}><Tonight /></div>
+<div hidden={probe || tab !== 'sky'}><SkyView /></div>
 <div hidden={probe || tab !== 'sites'}><Sites active={!probe && tab === 'sites' && ui.importPayload === null} /></div>
 {#if probe}
   <SensorProbe />

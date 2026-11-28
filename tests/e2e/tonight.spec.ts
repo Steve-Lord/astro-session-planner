@@ -57,7 +57,7 @@ test.describe('Tonight', () => {
     await seedStorage(page)
     await page.goto('/?date=2026-11-22')
     await page.getByRole('button', { name: 'Next day' }).click()
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-23')
   })
 
   test('corrupt storage shows no-site prompt and an error banner', async ({ page }) => {

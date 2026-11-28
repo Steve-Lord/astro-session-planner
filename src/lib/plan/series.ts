@@ -28,6 +28,11 @@ export interface NightSeries {
   moonSet: number | null
 }
 
+/** Precession epoch the planner uses: the dark midpoint, else the span midpoint. */
+export function nightEpoch(span: TimeWindow, dark: TimeWindow | null): number {
+  return dark ? (dark.start + dark.end) / 2 : (span.start + span.end) / 2
+}
+
 /** Per-target altitude series from sunset to sunrise, on the same 5-min grid as buildContext. */
 export function nightSeries(
   site: Site, gear: Gear, settings: Settings, date: string, target: Target,
@@ -42,7 +47,7 @@ export function nightSeries(
   const times: number[] = []
   for (let t = origin + k0 * STEP_MS; t <= span.end; t += STEP_MS) times.push(t)
 
-  const mid = dark ? (dark.start + dark.end) / 2 : (span.start + span.end) / 2
+  const mid = nightEpoch(span, dark)
   const p = precessToDate(target.ra, target.dec, mid)
   const halfDiag = fovArcmin(gear).halfDiagDeg
   const n = times.length

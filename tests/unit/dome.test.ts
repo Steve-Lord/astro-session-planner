@@ -1,0 +1,181 @@
+import { describe, expect, it } from 'vitest'
+import { domeEntries, domeFrames, initialIndex, obstructionPaths, project } from '../../src/lib/sky/dome'
+import { nightSeries } from '../../src/lib/plan/series'
+import { flatProfile } from '../../src/lib/horizon/profile'
+import { SEESTAR_S50_PRO } from '../../src/lib/gear/fit'
+import { DEFAULT_SETTINGS } from '../../src/lib/sky/brightness'
+import type { NightPlan, PlanEntry, Site, Target } from '../../src/lib/types'
+
+const london: Site = {
+  id: 'london', name: 'London', lat: 51.5, lon: -0.13, elevation: 0,
+  timezone: 'Europe/London', sky: { bortle: 6 }, horizon: flatProfile(), treesBare: false, isDefault: true,
+}
+const gear = SEESTAR_S50_PRO
+const settings = DEFAULT_SETTINGS
+const m31: Target = {
+  id: 'M31', names: ['M 31'], ra: 10.68, dec: 41.27, type: 'Gx', majArcmin: null, minArcmin: null,
+  posAngle: null, mag: null, surfBr: null, emission: 'emission',
+}
+const date = '2026-11-22'
+const near = (a: { x: number; y: number }, x: number, y: number) => {
+  expect(a.x).toBeCloseTo(x, 6)
+  expect(a.y).toBeCloseTo(y, 6)
+}
+
+describe('project', () => {
+  it('puts zenith at the centre, north up, east left', () => {
+    near(project(90, 0, 100), 0, 0)
+    near(project(0, 0, 100), 0, -100)
+    near(project(0, 90, 100), -100, 0)
+    near(project(45, 180, 100), 0, 50)
+  })
+})
+
+describe('domeFrames', () => {
+  it('matches nightSeries grid and altitudes', () => {
+    const f = domeFrames(london, gear, settings, date, [m31])
+    const s = nightSeries(london, gear, settings, date, m31)
+    expect(f.times).toEqual(s.times)
+    expect(Array.from(f.targets[0].alt)).toEqual(Array.from(s.alt))
+    expect(Array.from(f.targets[0].az)).toEqual(Array.from(s.az))
+  })
+
+  it('usable follows the planner sample rule', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = a < 90 ? 0 : a < 270 ? 35 : 20
+    const site = { ...london, horizon: p }
+    const f = domeFrames(site, gear, settings, date, [m31])
+    const s = nightSeries(site, gear, settings, date, m31)
+    let ones = 0
+    let zeros = 0
+    for (let i = 0; i < s.times.length; i++) {
+      const alt = s.alt[i]
+      const want = alt >= gear.minAltDeg && alt <= gear.maxAltDeg && alt >= s.needed[i]
+      expect(f.targets[0].usable[i]).toBe(want ? 1 : 0)
+      if (want) ones++; else zeros++
+    }
+    expect(ones).toBeGreaterThan(0)
+    expect(zeros).toBeGreaterThan(0)
+  })
+
+  it('sun, moon and stars cover every step', () => {
+    const f = domeFrames(london, gear, settings, date, [m31])
+    const n = f.times.length
+    expect(f.sunAlt.length).toBe(n)
+    expect(f.moonAlt.length).toBe(n)
+    expect(f.moonAz.length).toBe(n)
+    expect(f.moonIllum.length).toBe(n)
+    expect(f.moonIllum[0]).toBeGreaterThanOrEqual(0)
+    expect(f.moonIllum[0]).toBeLessThanOrEqual(1)
+    expect(f.stars.length).toBeGreaterThan(0)
+    expect(f.stars[0].alt.length).toBe(n)
+    expect(f.sunAlt[0]).toBeLessThan(1)
+  })
+
+  it('handles an empty target list with no dark window', () => {
+    const oslo: Site = { ...london, lat: 60, lon: 10.75, timezone: 'Europe/Oslo' }
+    const f = domeFrames(oslo, gear, settings, '2026-06-21', [])
+    expect(f.dark).toBeNull()
+    expect(f.times.length).toBeGreaterThan(0)
+    expect(f.targets).toEqual([])
+    for (let i = 0; i < f.times.length; i++) expect(f.sunAlt[i]).toBeGreaterThan(-12)
+  })
+})
+
+describe('obstructionPaths', () => {
+  it('is empty without a profile', () => {
+    expect(obstructionPaths(null, false, 100)).toEqual({ roof: '', trees: '' })
+  })
+
+  it('splits seasonal degrees into trees', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 20
+    expect(obstructionPaths(p, false, 100).trees).toBe('')
+    expect(obstructionPaths(p, false, 100).roof).not.toBe('')
+    for (let a = 90; a <= 120; a++) { p.seasonal[a] = true; p.leafOffAltitudes[a] = 5 }
+    const o = obstructionPaths(p, false, 100)
+    expect(o.trees).not.toBe('')
+    expect(o.roof).not.toBe('')
+    expect(obstructionPaths(p, true, 100).trees).not.toBe(o.trees)
+  })
+})
+
+describe('obstructionPaths seams', () => {
+  const pt = (alt: number, az: number) => {
+    const { x, y } = project(alt, az, 100)
+    return `${x.toFixed(1)} ${y.toFixed(1)}`
+  }
+  const subpaths = (d: string) => d.split('M').filter(Boolean).length
+
+  it('draws a seasonal run across north (350-10) as one shape covering whole degrees', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 10
+    for (let a = 350; a <= 370; a++) { p.seasonal[a % 360] = true; p.altitudes[a % 360] = 25 }
+    const o = obstructionPaths(p, false, 100)
+    expect(subpaths(o.trees)).toBe(1)
+    expect(o.trees).toContain(pt(0, 349.5))
+    expect(o.trees).toContain(pt(0, 10.5))
+    expect(o.trees).toContain(pt(25, 0))
+    // The roof run (11..349) meets the trees at the same edges, with no gap.
+    expect(subpaths(o.roof)).toBe(1)
+    expect(o.roof).toContain(pt(0, 10.5))
+    expect(o.roof).toContain(pt(0, 349.5))
+  })
+
+  it('roof and trees on complementary degrees share every boundary', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 20
+    for (let a = 60; a <= 120; a++) p.seasonal[a] = true
+    for (let a = 200; a <= 220; a++) p.seasonal[a] = true
+    const o = obstructionPaths(p, false, 100)
+    expect(subpaths(o.trees)).toBe(2)
+    expect(subpaths(o.roof)).toBe(2)
+    for (const az of [59.5, 120.5, 199.5, 220.5]) {
+      expect(o.trees).toContain(pt(0, az))
+      expect(o.roof).toContain(pt(0, az))
+      expect(o.trees).toContain(pt(20, az))
+      expect(o.roof).toContain(pt(20, az))
+    }
+  })
+
+  it('closes the full circle as a ring with no wedge', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 15
+    const o = obstructionPaths(p, false, 100)
+    expect(o.trees).toBe('')
+    // Two closed subpaths (inner edge and dome edge) covering all 360 degrees.
+    expect(subpaths(o.roof)).toBe(2)
+    expect((o.roof.match(/Z/g) ?? []).length).toBe(2)
+    expect(o.roof).toContain(pt(15, 359))
+    expect(o.roof).toContain(pt(0, 359))
+  })
+})
+
+describe('initialIndex', () => {
+  const times = [0, 10, 20, 30, 40, 50].map((m) => 1_000_000_000 + m * 60000)
+  const dark = { start: times[2] + 1, end: times[4] }
+  it('picks the nearest step inside the span', () => {
+    expect(initialIndex(times, times[3] + 2 * 60000, dark)).toBe(3)
+    expect(initialIndex(times, times[3] + 6 * 60000, dark)).toBe(4)
+  })
+  it('falls back to the dark start, then 0', () => {
+    expect(initialIndex(times, times[0] - 86400000, dark)).toBe(3)
+    expect(initialIndex(times, times[0] - 86400000, null)).toBe(0)
+  })
+})
+
+describe('domeEntries', () => {
+  const entry = (id: string) => ({ target: { ...m31, id } }) as unknown as PlanEntry
+  const plan = { siteId: 'london', date: '2026-11-22', entries: Array.from({ length: 40 }, (_, i) => entry(`T${i}`)) } as unknown as NightPlan
+
+  it('takes the top 30 of a plan that matches the selection', () => {
+    const e = domeEntries(plan, false, '2026-11-22', 'london')
+    expect(e.map((x) => x.target.id)).toEqual(Array.from({ length: 30 }, (_, i) => `T${i}`))
+  })
+  it('is empty while planning, with no plan, or when the plan is for another night or site', () => {
+    expect(domeEntries(plan, true, '2026-11-22', 'london')).toEqual([])
+    expect(domeEntries(null, false, '2026-11-22', 'london')).toEqual([])
+    expect(domeEntries(plan, false, '2026-11-23', 'london')).toEqual([])
+    expect(domeEntries(plan, false, '2026-11-22', 'oslo')).toEqual([])
+  })
+})

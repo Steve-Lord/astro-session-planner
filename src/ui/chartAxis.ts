@@ -11,6 +11,16 @@ export function xOf(t: number, span: TimeWindow): number {
   return M_LEFT + ((t - span.start) / (span.end - span.start)) * PLOT_W
 }
 
+/** The x position and width of a window clipped to the span, or null when it lies outside it. */
+export function spanBand(w: TimeWindow | null, span: TimeWindow): { x: number; w: number } | null {
+  if (!w) return null
+  const a = Math.max(w.start, span.start)
+  const b = Math.min(w.end, span.end)
+  if (b <= a) return null
+  const x = xOf(a, span)
+  return { x, w: xOf(b, span) - x }
+}
+
 /** Even local hours (site time zone) inside the span, for tick marks. */
 export function hourTicks(span: TimeWindow, timezone: string): { t: number; label: string }[] {
   const step = 15 * 60000

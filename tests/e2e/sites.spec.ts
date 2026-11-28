@@ -26,7 +26,7 @@ test.describe('Sites, horizon, settings', () => {
     await page.getByRole('button', { name: 'Save site' }).click()
     await expect(page.getByRole('listitem').filter({ hasText: 'Back garden' })).toContainText('no horizon set')
     await page.getByRole('link', { name: 'Tonight' }).click()
-    await expect(page.getByLabel('Site').locator('option', { hasText: 'Back garden' })).toHaveCount(1)
+    await expect(page.getByLabel('Site').filter({ visible: true }).locator('option', { hasText: 'Back garden' })).toHaveCount(1)
     const s = await stored(page)
     expect(s.sites[0]).toMatchObject({ name: 'Back garden', horizon: null, isDefault: true, treesBare: false })
     expect(s.selectedSiteId).toBe(s.sites[0].id)
@@ -142,7 +142,7 @@ test.describe('Sites, horizon, settings', () => {
     await page.getByRole('button', { name: 'Add target' }).click()
     await expect(page.getByRole('listitem').filter({ hasText: 'Zed Test Nebula' })).toBeVisible()
     await page.getByRole('link', { name: 'Tonight' }).click()
-    await page.getByLabel('Date').fill('2026-12-21')
+    await page.getByLabel('Date').filter({ visible: true }).fill('2026-12-21')
     const row = page.locator('ol.entries > li').filter({ hasText: 'Zed Test Nebula' })
     await expect(row).toBeVisible({ timeout: 60_000 })
     // I2: magnitude + size give it a surface brightness, so its contrast is known.
@@ -208,10 +208,10 @@ test.describe('Sites, horizon, settings', () => {
     await seedStorage(page)
     await page.goto('/?date=2026-11-22')
     await page.getByRole('button', { name: 'Next day' }).click()
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-23')
     await page.getByRole('link', { name: 'Settings' }).click()
     await page.getByRole('link', { name: 'Tonight' }).click()
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-23')
   })
 
   test('deleting a site asks for confirmation; dismissing keeps it (D2)', async ({ page }) => {

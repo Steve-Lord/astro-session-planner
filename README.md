@@ -10,6 +10,8 @@ Your site location and horizon profile are stored only in your browser (local st
 
 Tap a target on Tonight (or in a hidden list) to open its detail. The altitude chart runs from sunset to sunrise, with twilight shading and hour ticks in the site's time zone. It draws your horizon at the target's azimuth, the "needed height" the frame must clear, the minimum altitude, the mount limit (alt-az only), the Moon, and the usable stretch the planner counted. Tap or drag the chart to read the time, altitude, azimuth, horizon height and Moon distance. Below the chart, a strip shows the Moon's distance from the target, shaded where moonlight hurts, and a frame preview shows the Seestar field, any mosaic panels and the object to scale.
 
+The Sky tab shows the same night as a map of your sky: your roofline round the edge, tonight's top targets, the Moon and bright stars. Drag the time slider to see where things will be; tap a target for its details.
+
 ## Gear
 
 Set Mount to Equatorial when the Seestar is polar-aligned on a wedge; targets passing overhead then count all the way up. Alt-az (the default) stops at 80°, where alt-az tracking fails.
