@@ -100,6 +100,57 @@ describe('obstructionPaths', () => {
   })
 })
 
+describe('obstructionPaths seams', () => {
+  const pt = (alt: number, az: number) => {
+    const { x, y } = project(alt, az, 100)
+    return `${x.toFixed(1)} ${y.toFixed(1)}`
+  }
+  const subpaths = (d: string) => d.split('M').filter(Boolean).length
+
+  it('draws a seasonal run across north (350-10) as one shape covering whole degrees', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 10
+    for (let a = 350; a <= 370; a++) { p.seasonal[a % 360] = true; p.altitudes[a % 360] = 25 }
+    const o = obstructionPaths(p, false, 100)
+    expect(subpaths(o.trees)).toBe(1)
+    expect(o.trees).toContain(pt(0, 349.5))
+    expect(o.trees).toContain(pt(0, 10.5))
+    expect(o.trees).toContain(pt(25, 0))
+    // The roof run (11..349) meets the trees at the same edges, with no gap.
+    expect(subpaths(o.roof)).toBe(1)
+    expect(o.roof).toContain(pt(0, 10.5))
+    expect(o.roof).toContain(pt(0, 349.5))
+  })
+
+  it('roof and trees on complementary degrees share every boundary', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 20
+    for (let a = 60; a <= 120; a++) p.seasonal[a] = true
+    for (let a = 200; a <= 220; a++) p.seasonal[a] = true
+    const o = obstructionPaths(p, false, 100)
+    expect(subpaths(o.trees)).toBe(2)
+    expect(subpaths(o.roof)).toBe(2)
+    for (const az of [59.5, 120.5, 199.5, 220.5]) {
+      expect(o.trees).toContain(pt(0, az))
+      expect(o.roof).toContain(pt(0, az))
+      expect(o.trees).toContain(pt(20, az))
+      expect(o.roof).toContain(pt(20, az))
+    }
+  })
+
+  it('closes the full circle as a ring with no wedge', () => {
+    const p = flatProfile()
+    for (let a = 0; a < 360; a++) p.altitudes[a] = 15
+    const o = obstructionPaths(p, false, 100)
+    expect(o.trees).toBe('')
+    // Two closed subpaths (inner edge and dome edge) covering all 360 degrees.
+    expect(subpaths(o.roof)).toBe(2)
+    expect((o.roof.match(/Z/g) ?? []).length).toBe(2)
+    expect(o.roof).toContain(pt(15, 359))
+    expect(o.roof).toContain(pt(0, 359))
+  })
+})
+
 describe('initialIndex', () => {
   const times = [0, 10, 20, 30, 40, 50].map((m) => 1_000_000_000 + m * 60000)
   const dark = { start: times[2] + 1, end: times[4] }

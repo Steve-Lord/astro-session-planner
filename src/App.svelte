@@ -4,6 +4,7 @@
   import { startNight } from './lib/store/night.svelte'
   import Tonight from './ui/Tonight.svelte'
   import Sites from './ui/Sites.svelte'
+  import SkyView from './ui/SkyView.svelte'
   import GearView from './ui/GearView.svelte'
   import Settings from './ui/Settings.svelte'
   import SensorProbe from './ui/SensorProbe.svelte'
@@ -12,6 +13,7 @@
 
   const TABS = [
     { id: 'tonight', label: 'Tonight' },
+    { id: 'sky', label: 'Sky' },
     { id: 'sites', label: 'Sites' },
     { id: 'gear', label: 'Gear' },
     { id: 'settings', label: 'Settings' },
@@ -70,9 +72,10 @@
     {/each}
   </nav>
 {/if}
-<!-- Tonight and Sites stay mounted (hidden) so Tonight's date/catalog and unsaved horizon edits
-     survive tab switches. -->
+<!-- Tonight, Sky and Sites stay mounted (hidden) so Tonight's list, the Sky slider and unsaved
+     horizon edits survive tab switches. -->
 <div hidden={probe || tab !== 'tonight'}><Tonight /></div>
+<div hidden={probe || tab !== 'sky'}><SkyView /></div>
 <div hidden={probe || tab !== 'sites'}><Sites active={!probe && tab === 'sites' && ui.importPayload === null} /></div>
 {#if probe}
   <SensorProbe />

@@ -1,10 +1,8 @@
 <script lang="ts">
   import { appState } from '../lib/store/state.svelte'
   import { night, pickDate } from '../lib/store/night.svelte'
-  import { shiftDate } from '../lib/store/nightDate'
+  import { DATE_RE, shiftDate } from '../lib/store/nightDate'
   import type { Gear } from '../lib/types'
-
-  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
   const gear: Gear | undefined = $derived(appState.gear.find((g) => g.id === appState.selectedGearId))
 

@@ -2,7 +2,7 @@
   import type { Gear, TimeWindow } from '../lib/types'
   import type { NightSeries } from '../lib/plan/series'
   import { formatLocal } from '../lib/astro/time'
-  import { M_LEFT, PLOT_W, VB_W, hourTicks, linePath, nearestIndex, xOf } from './chartAxis'
+  import { M_LEFT, PLOT_W, VB_W, hourTicks, linePath, nearestIndex, spanBand, xOf } from './chartAxis'
 
   let { series, windows, best, gear, dark, timezone, hasHorizon }: {
     series: NightSeries; windows: TimeWindow[]; best: TimeWindow | null; gear: Gear
@@ -31,14 +31,7 @@
   const horizonEdgeD = $derived(linePath(xs, ys(series.horizon)))
   const showMountLimit = $derived(gear.mount === 'altaz' && gear.maxAltDeg < 90)
 
-  function band(w: TimeWindow | null): { x: number; w: number } | null {
-    if (!w) return null
-    const a = Math.max(w.start, series.span.start)
-    const b = Math.min(w.end, series.span.end)
-    if (b <= a) return null
-    const x = xOf(a, series.span)
-    return { x, w: xOf(b, series.span) - x }
-  }
+  const band = (w: TimeWindow | null) => spanBand(w, series.span)
   const shades = $derived([
     ['twilight-civil', band(series.twilight.civil)],
     ['twilight-nautical', band(series.twilight.nautical)],

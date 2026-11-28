@@ -5,9 +5,7 @@ import { planNightAsync } from '../plan/planAsync';
 import { tonight } from '../astro/time';
 import type { Gear, NightPlan, Site, Target } from '../types';
 import { appState } from './state.svelte';
-import { initialDate } from './nightDate';
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import { DATE_RE, initialDate } from './nightDate';
 
 class Night {
   date = $state<string>('');

@@ -17,19 +17,33 @@ export function project(alt: number, az: number, radius: number): { x: number; y
 }
 
 const pt = (alt: number, az: number, radius: number): string => {
-  const { x, y } = project(alt, az, radius)
+  const { x, y } = project(alt, ((az % 360) + 360) % 360, radius)
   return `${x.toFixed(1)} ${y.toFixed(1)}`
 }
 
-/** Closed shapes from the dome edge in to the obstruction height over runs of degrees where `pick` holds. */
+/**
+ * Closed shapes from the dome edge in to the obstruction height over runs of degrees where `pick`
+ * holds. Degree d covers [d - 0.5, d + 0.5], so neighbouring runs (roof next to trees) share an edge;
+ * when every degree is picked the shape is a full ring.
+ */
 function runsPath(
   profile: HorizonProfile, treesBare: boolean, radius: number, pick: (k: number) => boolean,
 ): string {
   const flags = Array.from({ length: 360 }, (_, k) => pick(k))
   if (!flags.some(Boolean)) return ''
+  const h = (k: number) => heightAt(profile, k % 360, treesBare)
+  if (flags.every(Boolean)) {
+    const inner: string[] = []
+    const outer: string[] = []
+    for (let k = 0; k < 360; k++) {
+      inner.push(pt(h(k), k, radius))
+      outer.push(pt(0, k, radius))
+    }
+    // Opposite windings, so the nonzero fill leaves the sky inside the inner edge open.
+    return `M${inner.join('L')}ZM${outer.reverse().join('L')}Z`
+  }
   // Start scanning just after a degree that is not picked so no run straddles the scan start.
-  const off = flags.indexOf(false)
-  const start = off < 0 ? 0 : off + 1
+  const start = flags.indexOf(false) + 1
   const runs: [number, number][] = []
   let cur: [number, number] | null = null
   for (let i = 0; i < 360; i++) {
@@ -41,12 +55,14 @@ function runsPath(
   }
   if (cur) runs.push(cur)
   return runs.map(([a, b]) => {
-    const inner: string[] = []
-    const outer: string[] = []
+    const inner = [pt(h(a), a - 0.5, radius)]
+    const outer = [pt(0, a - 0.5, radius)]
     for (let k = a; k <= b; k++) {
-      inner.push(pt(heightAt(profile, k % 360, treesBare), k, radius))
+      inner.push(pt(h(k), k, radius))
       outer.push(pt(0, k, radius))
     }
+    inner.push(pt(h(b), b + 0.5, radius))
+    outer.push(pt(0, b + 0.5, radius))
     return `M${inner.join('L')}L${outer.reverse().join('L')}Z`
   }).join('')
 }

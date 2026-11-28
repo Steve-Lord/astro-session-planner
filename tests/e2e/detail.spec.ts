@@ -69,7 +69,7 @@ test.describe('Target detail', () => {
     await page.goto('/#target=NGC0104&date=2026-11-22')
     await expect(page.getByText('Hidden: never rises above 15° from here')).toBeVisible({ timeout: 60_000 })
     await page.getByRole('button', { name: '‹ Tonight' }).click()
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-22')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-22')
     expect(new URL(page.url()).pathname).toBe('/')
   })
 
@@ -90,7 +90,7 @@ test.describe('Target detail', () => {
     await expect(chart.locator('rect.usable.best')).toHaveCount(1)
     await expect(chart.locator('line.min-alt')).toHaveCount(1)
     await expect(chart.locator('line.mount-limit')).toHaveCount(1)
-    await expect(page.getByText('No horizon saved for this site')).toBeVisible()
+    await expect(page.getByText('No horizon saved for this site').filter({ visible: true })).toBeVisible()
     const frame = page.locator('.frame-preview')
     // NGC 7000 is a 1×2 mosaic on the Seestar (fit.test.ts), not 2×2 as the brief guessed.
     await expect(frame.locator('rect.panel')).toHaveCount(2)
@@ -154,12 +154,12 @@ test.describe('Target detail', () => {
 
   test('controls are hidden while a detail is open', async ({ page }) => {
     await openNgc7000(page)
-    await expect(page.getByLabel('Date')).toBeHidden()
-    await expect(page.getByLabel('Site')).toBeHidden()
-    await expect(page.getByLabel('Gear')).toBeHidden()
+    await expect(page.getByLabel('Date').filter({ visible: true })).toBeHidden()
+    await expect(page.getByLabel('Site').filter({ visible: true })).toBeHidden()
+    await expect(page.getByLabel('Gear').filter({ visible: true })).toBeHidden()
     await page.getByRole('button', { name: '‹ Tonight' }).click()
-    await expect(page.getByLabel('Date')).toBeVisible()
-    await expect(page.getByLabel('Site')).toBeVisible()
+    await expect(page.getByLabel('Date').filter({ visible: true })).toBeVisible()
+    await expect(page.getByLabel('Site').filter({ visible: true })).toBeVisible()
   })
 
   test('M31 caption states the catalogued PA', async ({ page }) => {
@@ -173,7 +173,7 @@ test.describe('Target detail', () => {
     await page.clock.setFixedTime(t1)
     await seedStorage(page)
     await page.goto('/')
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-22')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-22')
     const row = page.locator('ol.entries > li').first()
     await expect(row).toBeVisible({ timeout: 60_000 })
     await row.getByRole('link').first().click()
@@ -184,6 +184,6 @@ test.describe('Target detail', () => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    await expect(page.getByLabel('Date')).toHaveValue('2026-11-23')
+    await expect(page.getByLabel('Date').filter({ visible: true })).toHaveValue('2026-11-23')
   })
 })
