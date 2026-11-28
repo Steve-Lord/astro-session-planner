@@ -126,4 +126,36 @@ test.describe('Sky', () => {
     await page.mouse.click(hit!.x, hit!.y)
     await expect(page.getByRole('dialog', { name: hit!.name })).toBeVisible()
   })
+
+  test('details from the dome and back keep the slider', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/?date=2026-11-22#sky')
+    const first = page.locator('g.target').first()
+    await expect(first).toBeAttached({ timeout: 60_000 })
+    const slider = page.getByRole('slider', { name: 'Time' })
+    await slider.evaluate((el: HTMLInputElement) => {
+      el.value = '10'
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await first.locator('circle.dot').click({ force: true })
+    await page.getByRole('button', { name: 'Details ›' }).click()
+    await expect(page).toHaveURL(/from=sky/)
+    await expect(page.getByRole('button', { name: '‹ Sky' })).toBeVisible()
+    const nav = page.getByRole('navigation', { name: 'Main' })
+    await expect(nav.getByRole('link', { name: 'Tonight' })).not.toHaveAttribute('aria-current', /.*/)
+    await expect(nav.getByRole('link', { name: 'Sky' })).toHaveAttribute('aria-current', 'page')
+    await page.getByRole('button', { name: '‹ Sky' }).click()
+    await expect(page.getByRole('img', { name: 'Sky dome' })).toBeVisible()
+    await expect(page.getByRole('slider', { name: 'Time' })).toHaveValue('10')
+  })
+
+  test('cold load of a from=sky detail opens in Sky', async ({ page }) => {
+    await seedStorage(page)
+    await page.goto('/#target=NGC7000&date=2026-11-22&from=sky')
+    await expect(page.getByRole('button', { name: '‹ Sky' })).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('ol.entries')).not.toBeVisible()
+    await page.getByRole('button', { name: '‹ Sky' }).click()
+    await expect(page).toHaveURL(/#sky$/)
+    await expect(page.getByRole('img', { name: 'Sky dome' })).toBeVisible()
+  })
 })

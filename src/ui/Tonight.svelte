@@ -10,9 +10,9 @@
   import TargetDetail from './TargetDetail.svelte'
   import NightControls from './NightControls.svelte'
   import { parseDetailHash } from '../lib/detailHash'
+  import { detailInput, detailTarget } from '../lib/store/detailView.svelte'
 
   const PAGE = 50
-  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
   const site: Site | undefined = $derived(appState.sites.find((s) => s.id === appState.selectedSiteId))
   const gear: Gear | undefined = $derived(appState.gear.find((g) => g.id === appState.selectedGearId))
@@ -27,12 +27,17 @@
   })
 
   // Detail screen: the list stays mounted (hidden) so its scroll and plan survive.
-  let detailId = $state<string | null>(parseDetailHash(location.hash)?.id ?? null)
+  // A detail opened from the Sky tab (from=sky) belongs to that tab, not here.
+  const tonightDetail = () => {
+    const d = parseDetailHash(location.hash)
+    return d && d.from !== 'sky' ? d : null
+  }
+  let detailId = $state<string | null>(tonightDetail()?.id ?? null)
   let openedInApp = false
   let savedScroll = 0
 
   function syncDetail(first: boolean): void {
-    const d = parseDetailHash(location.hash)
+    const d = tonightDetail()
     if (d) {
       if (d.date && (first || d.date !== night.date)) { night.date = d.date; night.picked = true }
       if (detailId === null) {
@@ -43,6 +48,7 @@
       detailId = d.id
     } else if (detailId !== null) {
       detailId = null
+      if (parseDetailHash(location.hash)?.from === 'sky') return
       if (location.hash === '' || location.hash === '#tonight') tick().then(() => window.scrollTo(0, savedScroll))
     }
   }
@@ -66,19 +72,8 @@
     if (!appState.dismissed.includes(IOS_HINT)) appState.dismissed.push(IOS_HINT)
   }
 
-  const detailTarget = $derived.by(() => {
-    if (detailId === null || !night.catalog) return undefined
-    return night.catalog.find((t) => t.id === detailId) ?? appState.customTargets.find((t) => t.id === detailId) ?? null
-  })
-  const detailInput = $derived(site && gear && DATE_RE.test(night.date)
-    ? {
-        site: $state.snapshot(site) as Site,
-        gear: $state.snapshot(gear) as Gear,
-        filterId: appState.selectedFilterId,
-        settings: $state.snapshot(appState.settings),
-        date: night.date,
-      }
-    : null)
+  const target = $derived(detailTarget(detailId))
+  const input = $derived(detailInput(site, gear))
 
   function pct(x: number): number { return Math.round(x * 100) }
 
@@ -135,10 +130,10 @@
     {/if}
 
     {#if detailId !== null}
-      {#if detailTarget === undefined || !detailInput}
+      {#if target === undefined || !input}
         <p class="status" role="status">Loading…</p>
       {:else}
-        <TargetDetail target={detailTarget} input={detailInput} onback={closeDetail} />
+        <TargetDetail {target} {input} onback={closeDetail} />
       {/if}
     {/if}
 

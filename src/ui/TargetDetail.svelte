@@ -11,7 +11,9 @@
   import MoonStrip from './MoonStrip.svelte'
   import FramePreview from './FramePreview.svelte'
 
-  let { target, input, onback }: { target: Target | null; input: Omit<PlanInput, 'catalog'>; onback: () => void } = $props()
+  let { target, input, onback, backLabel = '‹ Tonight' }: {
+    target: Target | null; input: Omit<PlanInput, 'catalog'>; onback: () => void; backLabel?: string
+  } = $props()
 
   const verdict: TargetVerdict | null = $derived(target ? explainTarget(input, target) : null)
   const common = $derived(target ? commonName(target.names) : null)
@@ -35,7 +37,7 @@
 </script>
 
 <section class="detail" aria-label="Target detail">
-  <button type="button" class="back" onclick={onback}>‹ Tonight</button>
+  <button type="button" class="back" onclick={onback}>{backLabel}</button>
   {#if !target || !verdict}
     <p>This target isn't in the catalogue any more.</p>
   {:else}

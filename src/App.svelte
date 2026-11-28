@@ -9,6 +9,7 @@
   import Settings from './ui/Settings.svelte'
   import SensorProbe from './ui/SensorProbe.svelte'
   import ImportHorizon from './ui/ImportHorizon.svelte'
+  import { parseDetailHash } from './lib/detailHash'
   import { readImportHash } from './lib/horizon/share'
 
   const TABS = [
@@ -20,8 +21,12 @@
   ] as const
   type Tab = (typeof TABS)[number]['id']
 
-  // #target=… (a target's detail screen) lives inside the Tonight tab.
-  const fromHash = (): Tab => (location.hash.startsWith('#target=') ? 'tonight' : TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight')
+  // #target=… (a target's detail screen) lives inside the Tonight tab, or the Sky tab when from=sky.
+  const fromHash = (): Tab => {
+    const d = parseDetailHash(location.hash)
+    if (d) return d.from === 'sky' ? 'sky' : 'tonight'
+    return TABS.find((t) => t.id === location.hash.slice(1))?.id ?? 'tonight'
+  }
   let tab = $state<Tab>(fromHash())
   // Hidden debug screen (not in the tab bar) for checking device-orientation behaviour on a phone.
   const isProbe = () => location.hash === '#sensor-probe'

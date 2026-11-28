@@ -1,14 +1,16 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
+  import { onMount, tick, untrack } from 'svelte'
   import { appState } from '../lib/store/state.svelte'
   import { night } from '../lib/store/night.svelte'
   import { DATE_RE } from '../lib/store/nightDate'
   import { domeEntries, domeFrames, initialIndex } from '../lib/sky/dome'
   import { formatLocal } from '../lib/astro/time'
-  import { detailHash } from '../lib/detailHash'
+  import { detailHash, parseDetailHash } from '../lib/detailHash'
   import type { Gear, Settings, Site } from '../lib/types'
+  import { detailInput, detailTarget } from '../lib/store/detailView.svelte'
   import NightControls from './NightControls.svelte'
   import SkyDome from './SkyDome.svelte'
+  import TargetDetail from './TargetDetail.svelte'
   import { M_LEFT, PLOT_W, VB_W, hourTicks, spanBand, xOf } from './chartAxis'
 
   const site: Site | undefined = $derived(appState.sites.find((s) => s.id === appState.selectedSiteId))
@@ -64,8 +66,49 @@
   }
 
   function onpick(id: string): void {
-    location.hash = detailHash(id, night.date)
+    location.hash = detailHash(id, night.date, 'sky')
   }
+
+  // Detail screen, mirroring Tonight: the dome stays mounted (hidden) so the slider and its
+  // "touched" flag survive.
+  const skyDetail = () => {
+    const d = parseDetailHash(location.hash)
+    return d && d.from === 'sky' ? d : null
+  }
+  let detailId = $state<string | null>(skyDetail()?.id ?? null)
+  let openedInApp = false
+  let savedScroll = 0
+
+  function syncDetail(first: boolean): void {
+    const d = skyDetail()
+    if (d) {
+      if (d.date && (first || d.date !== night.date)) { night.date = d.date; night.picked = true }
+      if (detailId === null) {
+        savedScroll = window.scrollY
+        openedInApp = !first
+        tick().then(() => window.scrollTo(0, 0))
+      }
+      detailId = d.id
+    } else if (detailId !== null) {
+      detailId = null
+      if (location.hash === '#sky') tick().then(() => window.scrollTo(0, savedScroll))
+    }
+  }
+
+  function closeDetail(): void {
+    if (openedInApp) history.back()
+    else location.hash = '#sky'
+  }
+
+  onMount(() => {
+    syncDetail(true)
+    const onHash = () => syncDetail(false)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  })
+
+  const target = $derived(detailTarget(detailId))
+  const input = $derived(detailInput(site, gear))
 
   const t = $derived(frames && frames.times.length ? frames.times[Math.min(index, frames.times.length - 1)] : null)
   const timeText = $derived(t !== null && site ? formatLocal(t, site.timezone) : '--:--')
@@ -101,6 +144,15 @@
   {#if !site || !gear}
     <p>No site yet. <a href="#sites">Add a site</a> to see your sky.</p>
   {:else}
+    {#if detailId !== null}
+      {#if target === undefined || !input}
+        <p class="status" role="status">Loading…</p>
+      {:else}
+        <TargetDetail {target} {input} onback={closeDetail} backLabel="‹ Sky" />
+      {/if}
+    {/if}
+
+    <div hidden={detailId !== null}>
     <NightControls />
 
     {#if night.runError}<p class="error" role="alert">{night.runError}</p>{/if}
@@ -147,6 +199,7 @@
       <p class="status">No targets are usable this night.</p>
     {/if}
     {#if site.horizon === null}<p class="note">No horizon saved for this site</p>{/if}
+    </div>
   {/if}
 </main>
 
